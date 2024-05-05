@@ -2,20 +2,19 @@
 
 const express = require("express");
 const bodyParser = require("body-parser");
-const sequelize = require("./config/db");
+
 const cors = require("cors");
-const axios = require("axios");
-const xml2js = require("xml2js");
-const QRCode = require("qrcode");
+
 const connectDB = require("./config/db");
 const invoiceRoutes = require("./routes/invoiceRoutes");
 const invoiceFormRoutes = require("./routes/invoiceFormRoutes.js");
 const zatcaRoutes = require("./routes/zatcaRoutes");
+require("dotenv").config();
 
 connectDB();
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Middleware to parse JSON request body
 app.use(bodyParser.json());
