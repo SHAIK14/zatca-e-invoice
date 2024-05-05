@@ -6,7 +6,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 
 const connectDB = require("./config/db");
-const invoiceRoutes = require("./routes/invoiceRoutes");
+
 const invoiceFormRoutes = require("./routes/invoiceFormRoutes.js");
 const zatcaRoutes = require("./routes/zatcaRoutes");
 require("dotenv").config();
@@ -117,7 +117,6 @@ app.use(cors());
 // });
 app.use("/", zatcaRoutes);
 app.use("/invoice-form", invoiceFormRoutes);
-app.use("/api/invoices", invoiceRoutes);
 
 // Start the server
 app.listen(PORT, () => {
