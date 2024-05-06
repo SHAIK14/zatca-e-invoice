@@ -119,18 +119,17 @@ exports.submitFormData = async (req, res) => {
           });
 
           await invoiceForm.save();
-
-          res.status(200).json({
-            invoicedata: invoiceData,
-            message: "Data sent to API successfully",
-            responseData: response.data,
-            clearedInvoiceXml: clearedInvoiceXml,
-            qrCodeUrl: url,
-          });
         } catch (error) {
-          console.error(error);
+          console.error("Error saving invoice form:", error);
           res.status(500).json({ message: "Internal server error" });
         }
+        res.status(200).json({
+          invoicedata: invoiceData,
+          message: "Data sent to API successfully",
+          responseData: response.data,
+          clearedInvoiceXml: clearedInvoiceXml,
+          qrCodeUrl: url,
+        });
       });
     });
   } catch (error) {
