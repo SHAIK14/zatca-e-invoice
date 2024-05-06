@@ -24,19 +24,19 @@ exports.submitFormData = async (req, res) => {
     } else {
       return res.status(400).json({ error: "Invalid request data" });
     }
-
+    // console.log("ivoiced data:", invoiceData);
     const xmlData = generateXMLFile(invoiceData);
-    console.log(xmlData);
+    // console.log(xmlData);
     const xmlDataWithoutHeader = removeXMLHeader(xmlData);
 
     const hashKey = await generateHashKey(xmlDataWithoutHeader);
-    console.log("Hash Key:", hashKey);
+    // console.log("Hash Key:", hashKey);
 
     const { UUID } = invoiceData;
-    console.log("UUID:", UUID);
+    // console.log("UUID:", UUID);
 
     const xmlBase64 = await utf8_to_b64(xmlData);
-    console.log("XML Base64:", xmlBase64);
+    // console.log("XML Base64:", xmlBase64);
 
     const payload = {
       invoiceHash: hashKey,
@@ -62,13 +62,13 @@ exports.submitFormData = async (req, res) => {
       payload,
       { headers }
     );
-    console.log("response from api: ", response.data);
+    // console.log("response from api: ", response.data);
 
     const clearedInvoiceXml = Buffer.from(
       response.data.clearedInvoice,
       "base64"
     ).toString("utf-8");
-    console.log("clearedInvoiceXml:", clearedInvoiceXml);
+    // console.log("clearedInvoiceXml:", clearedInvoiceXml);
 
     xml2js.parseString(clearedInvoiceXml, (err, result) => {
       if (err) {
@@ -81,7 +81,7 @@ exports.submitFormData = async (req, res) => {
       const qrData = result.Invoice["cac:AdditionalDocumentReference"].find(
         (ref) => ref["cbc:ID"][0] === "QR"
       )["cac:Attachment"][0]["cbc:EmbeddedDocumentBinaryObject"][0]._;
-      console.log("QRDATA:", qrData);
+      // console.log("QRDATA:", qrData);
       QRCode.toDataURL(qrData, async (err, url) => {
         if (err) {
           console.error("Error generating QR code:", err);
@@ -121,6 +121,7 @@ exports.submitFormData = async (req, res) => {
           await invoiceForm.save();
 
           res.status(200).json({
+            invoicedata: invoiceData,
             message: "Data sent to API successfully",
             responseData: response.data,
             clearedInvoiceXml: clearedInvoiceXml,
