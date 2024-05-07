@@ -24,6 +24,10 @@ exports.submitFormData = async (req, res) => {
     } else {
       return res.status(400).json({ error: "Invalid request data" });
     }
+    invoiceData.IssueDate = new Date(invoiceData.IssueDate).toISOString();
+    invoiceData.Delivery.ActualDeliveryDate = new Date(
+      invoiceData.Delivery.ActualDeliveryDate
+    ).toISOString();
     // console.log("ivoiced data:", invoiceData);
     const xmlData = generateXMLFile(invoiceData);
     // console.log(xmlData);

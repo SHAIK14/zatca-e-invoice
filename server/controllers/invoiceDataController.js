@@ -15,6 +15,10 @@ exports.saveInvoiceForm = async (req, res) => {
 exports.saveInvoiceFormData = async (req, res) => {
   try {
     const formData = req.body;
+    formData.IssueDate = new Date(formData.IssueDate).toISOString();
+    formData.Delivery.ActualDeliveryDate = new Date(
+      formData.Delivery.ActualDeliveryDate
+    ).toISOString();
     const invoiceForm = new InvoiceForm(formData);
     await invoiceForm.save();
     res.status(200).json({ message: "Form data saved successfully" });

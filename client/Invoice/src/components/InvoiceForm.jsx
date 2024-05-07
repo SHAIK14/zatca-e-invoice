@@ -529,7 +529,7 @@ const InvoiceForm = () => {
         !formData.Delivery.ActualDeliveryDate ||
         !formData.PaymentMeans.PaymentMeansCode
       ) {
-        alert("Please fill in all mandatory fields.");
+        alert("Please fill in issuedate,Delivey,paymentcode fields.");
         return;
       }
       const response = await axios.post(
@@ -549,6 +549,14 @@ const InvoiceForm = () => {
     console.log("Form submitted:", formData);
 
     try {
+      if (
+        !formData.IssueDate ||
+        !formData.Delivery.ActualDeliveryDate ||
+        !formData.PaymentMeans.PaymentMeansCode
+      ) {
+        alert("Please fill in all mandatory fields.");
+        return;
+      }
       const data = {
         formData: formData,
       };
