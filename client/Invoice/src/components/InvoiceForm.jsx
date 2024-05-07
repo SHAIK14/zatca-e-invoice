@@ -615,6 +615,7 @@ const InvoiceForm = () => {
                 onChange={handleChange}
                 className="block  mt-1 p-2 border rounded-md"
               />
+              required
             </label>
 
             <label className="block mb-2">
@@ -1090,6 +1091,7 @@ const InvoiceForm = () => {
                 }))
               }
               className="block mt-1  px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:border-black-500 focus:ring focus:ring-black-500"
+              required
             />
           </div>
 
@@ -1108,6 +1110,7 @@ const InvoiceForm = () => {
                 }))
               }
               className="block mt-1 w-full px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:border-black-500 focus:ring focus:ring-black-500"
+              required
             />
           </div>
         </div>
