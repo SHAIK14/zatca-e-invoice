@@ -524,6 +524,14 @@ const InvoiceForm = () => {
   }, [selectedInvoice]);
   const handleSave = async () => {
     try {
+      if (
+        !formData.IssueDate ||
+        !formData.Delivery.ActualDeliveryDate ||
+        !formData.PaymentMeans.PaymentMeansCode
+      ) {
+        alert("Please fill in all mandatory fields.");
+        return;
+      }
       const response = await axios.post(
         "https://zatca-e-invoice-1.onrender.com/invoice-form/save",
         formData
