@@ -630,8 +630,8 @@ const InvoiceForm = () => {
                 value={formData.IssueDate}
                 onChange={handleChange}
                 className="block  mt-1 p-2 border rounded-md"
+                required
               />
-              required
             </label>
 
             <label className="block mb-2">
