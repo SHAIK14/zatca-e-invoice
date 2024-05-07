@@ -12,7 +12,7 @@ const InvoiceSearchPage = () => {
   const handleSearch = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/invoice-form/search?invoiceLine=${searchTerm}`
+        `https://zatca-e-invoice-1.onrender.com/invoice-form/search?invoiceLine=${searchTerm}`
       );
       const data = response.data;
       console.log(data);
