@@ -309,12 +309,16 @@ const InvoiceForm = () => {
       if (field === "LineType") {
         if (value === "Item") {
           updatedLine.Item.ClassifiedTaxCategory.ID = "S";
+          updatedLine.Item.ClassifiedTaxCategory.Percent = 15;
         } else if (value === "Exemption") {
           updatedLine.Item.ClassifiedTaxCategory.ID = "E";
+          updatedLine.Item.ClassifiedTaxCategory.Percent = 0;
         } else if (value === "Export" || value === "GCC") {
           updatedLine.Item.ClassifiedTaxCategory.ID = "Z";
+          updatedLine.Item.ClassifiedTaxCategory.Percent = 0;
         } else if (value === "Zero") {
           updatedLine.Item.ClassifiedTaxCategory.ID = "E";
+          updatedLine.Item.ClassifiedTaxCategory.Percent = 0;
         }
       }
 
@@ -569,11 +573,26 @@ const InvoiceForm = () => {
       console.log(qrCodeUrl);
       setQRCodeUrl(qrCodeUrl);
       setClearanceStatus(clearanceStatus);
-      // setShowAlert(true);
+      alert(
+        "Invoice generated successfully! Check the QR code and status at the top."
+      );
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
 
       console.log("Form data submitted successfully:", response.data);
     } catch (error) {
       console.error("Error submitting form data:", error);
+      if (error.response) {
+        alert(`Error: ${error.response.data}`);
+      } else {
+        alert("An error occurred while sending data to API");
+      }
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
     }
   };
   return (
