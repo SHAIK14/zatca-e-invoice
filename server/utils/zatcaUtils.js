@@ -65,95 +65,216 @@ const generateXMLFile = (formData) => {
       lineXML += `
             <cbc:PriceAmount currencyID="SAR">${line.Price.PriceAmount}</cbc:PriceAmount>`;
     }
-
     lineXML += `
     </cac:Price>
     </cac:InvoiceLine>`;
-
     return lineXML.trim();
   }).join("");
   //-------------------------------------------
   const taxTotalXML = `
 <cac:TaxTotal>
-<cbc:TaxAmount currencyID="SAR">${TaxTotal[0].TaxAmount}</cbc:TaxAmount>${
+  <cbc:TaxAmount currencyID="SAR">${TaxTotal[0].TaxAmount}</cbc:TaxAmount>
+  ${
     TaxTotal[0].TaxSubtotal.TaxCategory.ID === "O"
-      ? `
-<cac:TaxSubtotal>
-<cbc:TaxableAmount currencyID="SAR">${InvoiceLine.filter(
+      ? `<cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="SAR">${InvoiceLine.filter(
+        (line) => line.TaxTotal.TaxAmount === "0.00"
+      )
+        .reduce((acc, line) => acc + parseFloat(line.LineExtensionAmount), 0)
+        .toFixed(2)}</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="SAR">0.00</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.ID}</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cbc:TaxExemptionReasonCode>VATEX-SA-OOS</cbc:TaxExemptionReasonCode>
+        <cbc:TaxExemptionReason>Services outside scope of tax / Not subject to VAT | التوريدات الغير خاضعة للضريبة</cbc:TaxExemptionReason>
+        <cac:TaxScheme>
+          <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="SAR">${InvoiceLine.filter(
+        (line) => line.TaxTotal.TaxAmount !== "0.00"
+      )
+        .reduce((acc, line) => acc + parseFloat(line.LineExtensionAmount), 0)
+        .toFixed(2)}</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="SAR">${InvoiceLine.filter(
+        (line) => line.TaxTotal.TaxAmount !== "0.00"
+      )
+        .reduce((acc, line) => acc + parseFloat(line.TaxTotal.TaxAmount), 0)
+        .toFixed(2)}</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>${
+          InvoiceLine.find((line) => line.TaxTotal.TaxAmount !== "0.00")?.Item
+            .ClassifiedTaxCategory.Percent || "0.00"
+        }</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+  `
+      : TaxTotal[0].TaxSubtotal.TaxCategory.ID === "Z"
+      ? `${
+          InvoiceLine.some((line) => line.TaxTotal.TaxAmount !== "0.00")
+            ? `<cac:TaxSubtotal>
+        <cbc:TaxableAmount currencyID="SAR">${InvoiceLine.filter(
           (line) => line.TaxTotal.TaxAmount === "0.00"
         )
           .reduce((acc, line) => acc + parseFloat(line.LineExtensionAmount), 0)
           .toFixed(2)}</cbc:TaxableAmount>
-<cbc:TaxAmount currencyID="SAR">0.00</cbc:TaxAmount>
-<cac:TaxCategory>
-<cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.ID}</cbc:ID>
-<cbc:Percent>0.00</cbc:Percent>
-<cbc:TaxExemptionReasonCode>VATEX-SA-OOS</cbc:TaxExemptionReasonCode>
-<cbc:TaxExemptionReason>Services outside scope of tax / Not subject to VAT | التوريدات الغير خاضعة للضريبة</cbc:TaxExemptionReason>
-<cac:TaxScheme>
-<cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
-</cac:TaxScheme>
-</cac:TaxCategory>
-</cac:TaxSubtotal>
-<cac:TaxSubtotal>
-<cbc:TaxableAmount currencyID="SAR">${InvoiceLine.filter(
+        <cbc:TaxAmount currencyID="SAR">0.00</cbc:TaxAmount>
+        <cac:TaxCategory>
+          <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.ID}</cbc:ID>
+          <cbc:Percent>0.00</cbc:Percent>
+          <cbc:TaxExemptionReasonCode>VATEX-SA-32</cbc:TaxExemptionReasonCode>
+          <cbc:TaxExemptionReason>Export of goods | صادرات السلع من المملكة</cbc:TaxExemptionReason>
+          <cac:TaxScheme>
+            <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
+          </cac:TaxScheme>
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+      <cac:TaxSubtotal>
+        <cbc:TaxableAmount currencyID="SAR">${InvoiceLine.filter(
           (line) => line.TaxTotal.TaxAmount !== "0.00"
         )
           .reduce((acc, line) => acc + parseFloat(line.LineExtensionAmount), 0)
           .toFixed(2)}</cbc:TaxableAmount>
-<cbc:TaxAmount currencyID="SAR">${InvoiceLine.filter(
+        <cbc:TaxAmount currencyID="SAR">${InvoiceLine.filter(
           (line) => line.TaxTotal.TaxAmount !== "0.00"
         )
           .reduce((acc, line) => acc + parseFloat(line.TaxTotal.TaxAmount), 0)
           .toFixed(2)}</cbc:TaxAmount>
-<cac:TaxCategory>
-<cbc:ID>S</cbc:ID>
-<cbc:Percent>${
-          InvoiceLine.find((line) => line.TaxTotal.TaxAmount !== "0.00")?.Item
-            .ClassifiedTaxCategory.Percent || "0.00"
+        <cac:TaxCategory>
+          <cbc:ID>S</cbc:ID>
+          <cbc:Percent>${
+            InvoiceLine.find((line) => line.TaxTotal.TaxAmount !== "0.00")?.Item
+              .ClassifiedTaxCategory.Percent || "0.00"
+          }</cbc:Percent>
+          <cac:TaxScheme>
+            <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
+          </cac:TaxScheme>
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+    `
+            : `<cac:TaxSubtotal>
+        <cbc:TaxableAmount currencyID="SAR">${InvoiceLine.reduce(
+          (acc, line) => acc + parseFloat(line.LineExtensionAmount),
+          0
+        ).toFixed(2)}</cbc:TaxableAmount>
+        <cbc:TaxAmount currencyID="SAR">0.00</cbc:TaxAmount>
+        <cac:TaxCategory>
+          <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.ID}</cbc:ID>
+          <cbc:Percent>0.00</cbc:Percent>
+          <cbc:TaxExemptionReasonCode>VATEX-SA-32</cbc:TaxExemptionReasonCode>
+          <cbc:TaxExemptionReason>Export of goods | صادرات السلع من المملكة</cbc:TaxExemptionReason>
+          <cac:TaxScheme>
+            <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
+          </cac:TaxScheme>
+        </cac:TaxCategory>
+      </cac:TaxSubtotal>
+    `
+        }
+  `
+      : ` <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="SAR">${
+        TaxTotal[0].TaxSubtotal.TaxableAmount
+      }</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="SAR">${TaxTotal[0].TaxAmount}</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.ID}</cbc:ID>
+        <cbc:Percent>${
+          TaxTotal[0].TaxSubtotal.TaxCategory.Percent
         }</cbc:Percent>
-<cac:TaxScheme>
-<cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
-</cac:TaxScheme>
-</cac:TaxCategory>
-</cac:TaxSubtotal>
-`
-      : `
-<cac:TaxSubtotal>
-<cbc:TaxableAmount currencyID="SAR">${
-          TaxTotal[0].TaxSubtotal.TaxableAmount
-        }</cbc:TaxableAmount>
-<cbc:TaxAmount currencyID="SAR">${TaxTotal[0].TaxAmount}</cbc:TaxAmount>
-<cac:TaxCategory>
-<cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.ID}</cbc:ID>
-<cbc:Percent>${TaxTotal[0].TaxSubtotal.TaxCategory.Percent}</cbc:Percent>
-${
-  TaxTotal[0].TaxSubtotal.TaxCategory.ID === "E"
-    ? `
-<cbc:TaxExemptionReasonCode>VATEX-SA-29-7</cbc:TaxExemptionReasonCode>
-<cbc:TaxExemptionReason>Life insurance services mentioned in Article 29 of the VAT Regulations | عقد تأمين على الحياة</cbc:TaxExemptionReason>
-`
-    : ""
-}
-${
-  TaxTotal[0].TaxSubtotal.TaxCategory.ID === "Z"
-    ? `
-<cbc:TaxExemptionReasonCode>VATEX-SA-32</cbc:TaxExemptionReasonCode>
-<cbc:TaxExemptionReason>Export of goods | صادرات السلع من المملكة</cbc:TaxExemptionReason>
-`
-    : ""
-}<cac:TaxScheme>
-<cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
-</cac:TaxScheme>
-</cac:TaxCategory>
-</cac:TaxSubtotal>
-`
-  }</cac:TaxTotal>
+        ${
+          TaxTotal[0].TaxSubtotal.TaxCategory.ID === "E"
+            ? `
+          <cbc:TaxExemptionReasonCode>VATEX-SA-29-7</cbc:TaxExemptionReasonCode>
+          <cbc:TaxExemptionReason>Life insurance services mentioned in Article 29 of the VAT Regulations | عقد تأمين على الحياة</cbc:TaxExemptionReason>
+        `
+            : ""
+        }
+        <cac:TaxScheme>
+          <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+  `
+  }
+</cac:TaxTotal>
 <cac:TaxTotal>
-<cbc:TaxAmount currencyID="SAR">${TaxTotal[0].TaxAmount}</cbc:TaxAmount>
+  <cbc:TaxAmount currencyID="SAR">${TaxTotal[0].TaxAmount}</cbc:TaxAmount>
 </cac:TaxTotal>
 `;
+  const paymentMeansXML = `
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode>${
+      PaymentMeans.PaymentMeansCode
+    }</cbc:PaymentMeansCode>
+    ${
+      InvoiceTypeCode === "381" || InvoiceTypeCode === "383"
+        ? `
+      <cbc:InstructionNote>CANCELLATION_OR_TERMINATION</cbc:InstructionNote>
+    `
+        : ""
+    }
+  </cac:PaymentMeans>
+`;
 
+  const allowanceChargeXML =
+    InvoiceTypeCode === "381" || InvoiceTypeCode === "383"
+      ? `
+  <cac:AllowanceCharge>
+    <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+    ${
+      formData.InvoiceLine.some((line) => line.LineType === "Discount")
+        ? `
+      <cbc:AllowanceChargeReason>discount</cbc:AllowanceChargeReason>
+      <cbc:Amount currencyID="SAR">${
+        formData.InvoiceLine.find((line) => line.LineType === "Discount")
+          ?.DiscountAmount || "0.00"
+      }</cbc:Amount>
+      <cac:TaxCategory>
+        <cbc:ID schemeID="UN/ECE 5305" schemeAgencyID="6">${
+          TaxTotal[0].TaxSubtotal.TaxCategory.ID
+        }</cbc:ID>
+        <cbc:Percent>${
+          TaxTotal[0].TaxSubtotal.TaxCategory.Percent
+        }</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID schemeID="UN/ECE 5153" schemeAgencyID="6">${
+            TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID
+          }</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    `
+        : `
+      <cbc:Amount currencyID="SAR">0.00</cbc:Amount>
+      <cac:TaxCategory>
+        <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.ID}</cbc:ID>
+        <cbc:Percent>${TaxTotal[0].TaxSubtotal.TaxCategory.Percent}</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>${TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    `
+    }
+  </cac:AllowanceCharge>
+`
+      : "";
+
+  const billingReferenceXML =
+    InvoiceTypeCode === "381" || InvoiceTypeCode === "383"
+      ? `
+  <cac:BillingReference>
+    <cac:InvoiceDocumentReference>
+      <cbc:ID>${formData.ID}</cbc:ID>
+    </cac:InvoiceDocumentReference>
+  </cac:BillingReference>
+`
+      : "";
   const xmlData = `<?xml version="1.0" encoding="UTF-8"?> <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
     <cbc:ProfileID>${ProfileID}</cbc:ProfileID>
     <cbc:ID>${ID}</cbc:ID>
@@ -164,7 +285,7 @@ ${
     <cbc:DocumentCurrencyCode>${DocumentCurrencyCode}</cbc:DocumentCurrencyCode>
     <cbc:TaxCurrencyCode>${TaxCurrencyCode}</cbc:TaxCurrencyCode>
     <cbc:LineCountNumeric>${LineCountNumeric}</cbc:LineCountNumeric>
-    <cac:AdditionalDocumentReference>
+    ${billingReferenceXML}<cac:AdditionalDocumentReference>
     <cbc:ID>${AdditionalDocumentReference[0].ID}</cbc:ID>
     <cbc:UUID>${AdditionalDocumentReference[0].UUID}</cbc:UUID>
   </cac:AdditionalDocumentReference>
@@ -231,10 +352,7 @@ ${
 </cac:AccountingCustomerParty>
 <cac:Delivery>
     <cbc:ActualDeliveryDate>${Delivery.ActualDeliveryDate}</cbc:ActualDeliveryDate>
-</cac:Delivery>
-<cac:PaymentMeans>
-    <cbc:PaymentMeansCode>${PaymentMeans.PaymentMeansCode}</cbc:PaymentMeansCode>
-</cac:PaymentMeans>${taxTotalXML}<cac:LegalMonetaryTotal>
+</cac:Delivery>${paymentMeansXML}${allowanceChargeXML}${taxTotalXML}<cac:LegalMonetaryTotal>
   <cbc:LineExtensionAmount currencyID="SAR">${LegalMonetaryTotal.LineExtensionAmount}</cbc:LineExtensionAmount>
   <cbc:TaxExclusiveAmount currencyID="SAR">${LegalMonetaryTotal.TaxExclusiveAmount}</cbc:TaxExclusiveAmount>
   <cbc:TaxInclusiveAmount currencyID="SAR">${LegalMonetaryTotal.TaxInclusiveAmount}</cbc:TaxInclusiveAmount>

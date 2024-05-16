@@ -30,17 +30,17 @@ exports.submitFormData = async (req, res) => {
     // ).toISOString();
     // console.log("ivoiced data:", invoiceData);
     const xmlData = generateXMLFile(invoiceData);
-    // console.log(xmlData);
+    console.log(xmlData);
     const xmlDataWithoutHeader = removeXMLHeader(xmlData);
 
     const hashKey = await generateHashKey(xmlDataWithoutHeader);
-    // console.log("Hash Key:", hashKey);
+    console.log("Hash Key:", hashKey);
 
     const { UUID } = invoiceData;
-    // console.log("UUID:", UUID);
+    console.log("UUID:", UUID);
 
     const xmlBase64 = await utf8_to_b64(xmlData);
-    // console.log("XML Base64:", xmlBase64);
+    console.log("XML Base64:", xmlBase64);
 
     const payload = {
       invoiceHash: hashKey,
@@ -66,7 +66,7 @@ exports.submitFormData = async (req, res) => {
       payload,
       { headers }
     );
-    // console.log("response from api: ", response.data);
+    console.log("response from api: ", response.data);
 
     const clearedInvoiceXml = Buffer.from(
       response.data.clearedInvoice,
@@ -133,6 +133,7 @@ exports.submitFormData = async (req, res) => {
           responseData: response.data,
           clearedInvoiceXml: clearedInvoiceXml,
           qrCodeUrl: url,
+          clearanceStatus: response.data.clearanceStatus,
         });
       });
     });
