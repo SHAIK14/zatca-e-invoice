@@ -527,8 +527,9 @@ const InvoiceForm = () => {
         alert("Please fill in issuedate,Delivey,paymentcode fields.");
         return;
       }
+      //http://localhost:5000/invoice-form/save
       const response = await axios.post(
-        "http://localhost:5000/invoice-form/save",
+        "https://zatca-e-invoice-1.onrender.com/invoice-form/save",
         formData
       );
       console.log("Form data saved successfully:", response.data);
@@ -558,7 +559,7 @@ const InvoiceForm = () => {
       const token = localStorage.getItem("token");
       // Create new invoice
       const response = await axios.post(
-        "http://localhost:5000/submit-form-data",
+        "https://zatca-e-invoice-1.onrender.com/submit-form-data",
         data,
         {
           headers: {
