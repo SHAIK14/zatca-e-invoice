@@ -16,6 +16,7 @@ exports.processInvoiceData = async (invoiceData) => {
       AccountingCustomerParty,
       PaymentMeansCode,
       InvoiceLine,
+      Mode,
     } = invoiceData.RequestBody;
 
     const updatedInvoiceLines = InvoiceLine.map((line, index) => {
@@ -172,6 +173,7 @@ exports.processInvoiceData = async (invoiceData) => {
       ProfileID: "reporting:1.0",
       ID: INVOICE_ID,
       UUID: UUID,
+      Mode: Mode,
       IssueDate: IssueDate,
       IssueTime: IssueTime,
       InvoiceTypeCode: "388",
