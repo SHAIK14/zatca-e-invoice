@@ -14,6 +14,7 @@ const InvoiceForm = () => {
     ProfileID: "reporting:1.0",
     ID: "2024032399", //2024032399
     UUID: generateUUID(),
+    Mode: "",
     IssueDate: "",
     IssueTime: "",
     InvoiceTypeCode: "388",
@@ -51,7 +52,7 @@ const InvoiceForm = () => {
         Country: { IdentificationCode: "SA" },
       },
       PartyTaxScheme: {
-        CompanyID: "300000157210003",
+        CompanyID: "300000157210003", //300000157210003--399999999900003
         TaxScheme: { ID: "VAT" },
       },
       PartyLegalEntity: {
@@ -527,7 +528,7 @@ const InvoiceForm = () => {
         return;
       }
       const response = await axios.post(
-        "https://zatca-e-invoice-1.onrender.com/invoice-form/save",
+        "http://localhost:5000/invoice-form/save",
         formData
       );
       console.log("Form data saved successfully:", response.data);
@@ -554,14 +555,15 @@ const InvoiceForm = () => {
       const data = {
         formData: formData,
       };
-
+      const token = localStorage.getItem("token");
       // Create new invoice
       const response = await axios.post(
-        "https://zatca-e-invoice-1.onrender.com/submit-form-data",
+        "http://localhost:5000/submit-form-data",
         data,
         {
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // Add the token to the headers
           },
         }
       );
@@ -617,6 +619,20 @@ const InvoiceForm = () => {
                     className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
                     required
                   />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-bold mb-2">
+                    Mode
+                  </label>
+                  <select
+                    name="Mode"
+                    value={formData.Mode || "Standard"}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                  >
+                    <option value="Standard">Standard</option>
+                    <option value="Simplified">Simplified</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-gray-700 font-bold mb-2">

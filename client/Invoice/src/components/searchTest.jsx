@@ -1,32 +1,45 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-// import InvoiceForm from "./InvoiceForm";
-
 const InvoiceSearchPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [invoiceData, setInvoiceData] = useState([]);
   const navigate = useNavigate();
   //   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
-  const handleSearch = async () => {
+  useEffect(() => {
+    fetchUserInvoices();
+  }, []);
+  const fetchUserInvoices = async () => {
     try {
+      const token = localStorage.getItem("token");
       const response = await axios.get(
-        `https://zatca-e-invoice-1.onrender.com/invoice-form/search?invoiceLine=${searchTerm}`
+        "https://zatca-e-invoice-1.onrender.com/invoice-form/search",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
       const data = response.data;
-      console.log(data);
-
-      if (Array.isArray(data)) {
-        if (data.length === 0) {
-          setInvoiceData([]);
-          alert("No invoices found for the entered invoice line.");
-        } else {
-          setInvoiceData(data);
+      setInvoiceData(data);
+    } catch (error) {
+      console.error("Error fetching user invoices:", error);
+    }
+  };
+  const handleSearch = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `http://localhost:5000/invoice-form/search?invoiceLine=${searchTerm}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      } else {
-        setInvoiceData([data]);
-      }
+      );
+      const data = response.data;
+      setInvoiceData(data);
     } catch (error) {
       console.error("Error fetching invoice data:", error);
     }

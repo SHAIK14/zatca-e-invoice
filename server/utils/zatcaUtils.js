@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 
-const generateXMLFile = (formData) => {
+const generateXMLFile = async (formData) => {
   const {
     ProfileID,
     ID,

@@ -8,6 +8,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 
 const invoiceFormRoutes = require("./routes/invoiceFormRoutes.js");
+const authRoutes = require("./routes/authRoutes");
 const zatcaRoutes = require("./routes/zatcaRoutes");
 require("dotenv").config();
 
@@ -117,6 +118,7 @@ app.use(cors());
 // });
 app.use("/", zatcaRoutes);
 app.use("/invoice-form", invoiceFormRoutes);
+app.use("/auth", authRoutes);
 
 // Start the server
 app.listen(PORT, () => {

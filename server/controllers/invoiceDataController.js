@@ -32,8 +32,21 @@ exports.saveInvoiceFormData = async (req, res) => {
 exports.searchInvoices = async (req, res) => {
   try {
     const { invoiceLine } = req.query;
-    const invoices = await InvoiceForm.find({ ID: invoiceLine });
-    // console.log("sending searched invoice line data", invoices);
+    const userId = req.user._id; // Assuming you have authentication middleware that attaches user information to req.user
+
+    let invoices;
+    if (invoiceLine) {
+      invoices = await InvoiceForm.find({
+        ID: invoiceLine,
+        user: userId,
+      });
+    } else {
+      invoices = await InvoiceForm.find({ user: userId });
+    }
+    if (invoices.length === 0) {
+      return res.status(404).json({ message: "No invoices found" });
+    }
+
     res.status(200).json(invoices);
   } catch (error) {
     console.error(error);

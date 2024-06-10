@@ -105,6 +105,11 @@ const InvoiceFormSchema = new mongoose.Schema({
   clearanceInvoice: String,
   decodedClearanceInvoice: String,
   qrCode: String,
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
 });
 
 module.exports = mongoose.model("InvoiceForm", InvoiceFormSchema);
