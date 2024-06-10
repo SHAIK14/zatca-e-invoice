@@ -17,6 +17,7 @@ const { processInvoiceData } = require("../utils/apiDataUtils");
 exports.submitFormData = async (req, res) => {
   try {
     let invoiceData;
+    console.log("invoiceData", invoiceData);
 
     if (req.body.formData) {
       // Data received from the form
