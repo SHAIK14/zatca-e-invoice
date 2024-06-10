@@ -17,7 +17,6 @@ const { processInvoiceData } = require("../utils/apiDataUtils");
 exports.submitFormData = async (req, res) => {
   try {
     let invoiceData;
-    console.log("invoiceData", invoiceData);
 
     if (req.body.formData) {
       // Data received from the form
@@ -28,6 +27,7 @@ exports.submitFormData = async (req, res) => {
     } else {
       return res.status(400).json({ error: "Invalid request data" });
     }
+    console.log("invoiceData", invoiceData);
     const mode = invoiceData.Mode;
 
     console.log("mode in the controller file:", mode);
