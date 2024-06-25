@@ -10,6 +10,7 @@ const connectDB = require("./config/db");
 const invoiceFormRoutes = require("./routes/invoiceFormRoutes.js");
 const authRoutes = require("./routes/authRoutes");
 const zatcaRoutes = require("./routes/zatcaRoutes");
+const zatcaSimplifiedRoutes = require("./routes/zatcaSimplifiedRoutes");
 require("dotenv").config();
 
 connectDB();
@@ -117,6 +118,7 @@ app.use(cors());
 //   }
 // });
 app.use("/", zatcaRoutes);
+app.use("/", zatcaSimplifiedRoutes);
 app.use("/invoice-form", invoiceFormRoutes);
 app.use("/auth", authRoutes);
 

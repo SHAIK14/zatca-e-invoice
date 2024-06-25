@@ -14,7 +14,7 @@ const InvoiceSearchPage = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        "https://zatca-e-invoice-1.onrender.com/invoice-form/search",
+        "http://localhost:5000/invoice-form/search",
         {
           headers: {
             Authorization: `Bearer ${token}`,

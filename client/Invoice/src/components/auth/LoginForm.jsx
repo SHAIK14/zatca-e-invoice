@@ -12,13 +12,10 @@ const LoginForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        "https://zatca-e-invoice-1.onrender.com/auth/login",
-        {
-          emailOrUsername,
-          password,
-        }
-      );
+      const response = await axios.post("http://localhost:5000/auth/login", {
+        emailOrUsername,
+        password,
+      });
       const token = response.data.token;
       localStorage.setItem("token", token);
       navigate("/search");

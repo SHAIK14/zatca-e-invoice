@@ -52,7 +52,7 @@ const InvoiceForm = () => {
         Country: { IdentificationCode: "SA" },
       },
       PartyTaxScheme: {
-        CompanyID: "300000157210003", //300000157210003--399999999900003
+        CompanyID: "", //300000157210003--300000157210003
         TaxScheme: { ID: "VAT" },
       },
       PartyLegalEntity: {
@@ -122,6 +122,29 @@ const InvoiceForm = () => {
   const [clearanceStatus, setClearanceStatus] = useState(null);
   // const [showAlert, setShowAlert] = useState(false);
 
+  // const handleChange = (e) => {
+  //   const { name, value } = e.target;
+  //   let formattedValue = value;
+
+  //   if (name === "IssueDate") {
+  //     const dateObj = new Date(value);
+  //     const year = dateObj.getFullYear();
+  //     const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+  //     const day = String(dateObj.getDate()).padStart(2, "0");
+  //     formattedValue = `${year}-${month}-${day}`;
+  //   } else if (name === "IssueTime") {
+  //     const timeObj = new Date(`1970-01-01T${value}`);
+  //     const hours = String(timeObj.getHours()).padStart(2, "0");
+  //     const minutes = String(timeObj.getMinutes()).padStart(2, "0");
+  //     const seconds = String(timeObj.getSeconds()).padStart(2, "0");
+  //     formattedValue = `${hours}:${minutes}:${seconds}`;
+  //   }
+
+  //   setFormData((prevData) => ({
+  //     ...prevData,
+  //     [name]: formattedValue,
+  //   }));
+  // };
   const handleChange = (e) => {
     const { name, value } = e.target;
     let formattedValue = value;
@@ -140,10 +163,25 @@ const InvoiceForm = () => {
       formattedValue = `${hours}:${minutes}:${seconds}`;
     }
 
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: formattedValue,
-    }));
+    setFormData((prevData) => {
+      let updatedData = {
+        ...prevData,
+        [name]: formattedValue,
+      };
+
+      if (name === "Mode") {
+        updatedData.AccountingSupplierParty = {
+          ...prevData.AccountingSupplierParty,
+          PartyTaxScheme: {
+            ...prevData.AccountingSupplierParty.PartyTaxScheme,
+            CompanyID:
+              value === "Standard" ? "300000157210003" : "399999999900003",
+          },
+        };
+      }
+
+      return updatedData;
+    });
   };
   function generateUUID() {
     return uuidv4().toUpperCase();
@@ -529,7 +567,7 @@ const InvoiceForm = () => {
       }
       //http://localhost:5000/invoice-form/save
       const response = await axios.post(
-        "https://zatca-e-invoice-1.onrender.com/invoice-form/save",
+        "http://localhost:5000/invoice-form/save",
         formData
       );
       console.log("Form data saved successfully:", response.data);
@@ -557,17 +595,17 @@ const InvoiceForm = () => {
         formData: formData,
       };
       const token = localStorage.getItem("token");
+      const url =
+        formData.Mode === "Standard"
+          ? "http://localhost:5000/submit-form-data"
+          : "http://localhost:5000/submit-simplified-form-data";
       // Create new invoice
-      const response = await axios.post(
-        "https://zatca-e-invoice-1.onrender.com/submit-form-data",
-        data,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // Add the token to the headers
-          },
-        }
-      );
+      const response = await axios.post(url, data, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Add the token to the headers
+        },
+      });
       console.log("Response from backend:", response.data);
 
       // Handle the QR code response
@@ -627,10 +665,13 @@ const InvoiceForm = () => {
                   </label>
                   <select
                     name="Mode"
-                    value={formData.Mode || "Standard"}
+                    value={formData.Mode}
                     onChange={handleChange}
                     className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
                   >
+                    <option value="" disabled>
+                      Select Mode
+                    </option>
                     <option value="Standard">Standard</option>
                     <option value="Simplified">Simplified</option>
                   </select>
