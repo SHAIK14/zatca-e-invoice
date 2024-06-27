@@ -21,7 +21,8 @@ const AddressPage = () => {
   useEffect(() => {
     fetchAddresses();
   }, []);
-  const BASE_URL = `http://localhost:5000`;
+  // const BASE_URL = `http://localhost:5000`;
+  const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
 
   const fetchAddresses = async () => {
     try {
