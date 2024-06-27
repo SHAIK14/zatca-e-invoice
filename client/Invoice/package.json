@@ -13,6 +13,7 @@
     "axios": "^1.6.8",
     "b64-lite": "^1.4.0",
     "crypto": "^1.0.1",
+    "date-fns": "^3.6.0",
     "fast-xml-parser": "^4.3.6",
     "immer": "^10.0.4",
     "lodash": "^4.17.21",

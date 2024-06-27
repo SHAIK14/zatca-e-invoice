@@ -40,6 +40,9 @@ const Navbar = () => {
           <Link to="/form" className="text-gray-600 hover:text-gray-800">
             Create Invoice
           </Link>
+          <Link to="/addresses" className="text-gray-600 hover:text-gray-800">
+            Manage Addresses
+          </Link>
         </div>
         <button
           onClick={handleLogout}

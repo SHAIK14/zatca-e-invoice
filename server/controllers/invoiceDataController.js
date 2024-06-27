@@ -32,7 +32,7 @@ exports.saveInvoiceFormData = async (req, res) => {
 exports.searchInvoices = async (req, res) => {
   try {
     const { invoiceLine } = req.query;
-    const userId = req.user._id; // Assuming you have authentication middleware that attaches user information to req.user
+    const userId = req.user._id;
 
     let invoices;
     if (invoiceLine) {
@@ -46,34 +46,14 @@ exports.searchInvoices = async (req, res) => {
     if (invoices.length === 0) {
       return res.status(404).json({ message: "No invoices found" });
     }
-
+    // console.log("Sending invoice data:", invoices);
     res.status(200).json(invoices);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-// exports.updateInvoice = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const updatedFormData = req.body;
 
-//     const updatedInvoice = await InvoiceForm.findOneAndUpdate(
-//       { ID: id },
-//       updatedFormData,
-//       { new: true }
-//     );
-
-//     if (!updatedInvoice) {
-//       return res.status(404).json({ message: "Invoice not found" });
-//     }
-
-//     res.status(200).json(updatedInvoice);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
 exports.updateInvoice = async (req, res) => {
   try {
     const { ID } = req.params; // Assuming ID is passed as a URL parameter

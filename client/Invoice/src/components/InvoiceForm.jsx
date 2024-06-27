@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 // import { btoa } from "b64-lite";
 import axios from "axios";
+// import { format } from "date-fns";
 // import jsonData from "./invoice.json";
 
 // import axios from "axios";
@@ -40,23 +41,23 @@ const InvoiceForm = () => {
       },
     ],
     AccountingSupplierParty: {
-      PartyIdentification: { ID: "1010183482" },
+      PartyIdentification: { ID: "" }, //1010183482
       PostalAddress: {
-        StreetName: "Al Olaya Olaya Street",
-        BuildingNumber: "7235",
-        PlotIdentification: "325",
-        CitySubdivisionName: "Al Olaya Olaya",
-        CityName: "Riyadh",
-        PostalZone: "12244",
-        CountrySubentity: "Riyadh Region",
-        Country: { IdentificationCode: "SA" },
+        StreetName: "", //Al Olaya Olaya Street
+        BuildingNumber: "", //7235
+        PlotIdentification: "", //325
+        CitySubdivisionName: "", //Al Olaya Olaya
+        CityName: "", //Riyadh
+        PostalZone: "", //12244
+        CountrySubentity: "", //Riyadh Region
+        Country: { IdentificationCode: "" }, //SA
       },
       PartyTaxScheme: {
         CompanyID: "", //300000157210003--300000157210003
         TaxScheme: { ID: "VAT" },
       },
       PartyLegalEntity: {
-        RegistrationName: "Solutions By STC",
+        RegistrationName: "", //Solutions By STC
       },
     },
     AccountingCustomerParty: {
@@ -120,31 +121,53 @@ const InvoiceForm = () => {
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [qrCodeUrl, setQRCodeUrl] = useState("");
   const [clearanceStatus, setClearanceStatus] = useState(null);
-  // const [showAlert, setShowAlert] = useState(false);
+  const BASE_URL = `http://localhost:5000`;
 
-  // const handleChange = (e) => {
-  //   const { name, value } = e.target;
-  //   let formattedValue = value;
+  const fetchUserAddress = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${BASE_URL}/addresses/selected`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching user address:", error);
+      return null;
+    }
+  }, [BASE_URL]); // Add BASE_URL to the dependency array if it's not a constant
 
-  //   if (name === "IssueDate") {
-  //     const dateObj = new Date(value);
-  //     const year = dateObj.getFullYear();
-  //     const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-  //     const day = String(dateObj.getDate()).padStart(2, "0");
-  //     formattedValue = `${year}-${month}-${day}`;
-  //   } else if (name === "IssueTime") {
-  //     const timeObj = new Date(`1970-01-01T${value}`);
-  //     const hours = String(timeObj.getHours()).padStart(2, "0");
-  //     const minutes = String(timeObj.getMinutes()).padStart(2, "0");
-  //     const seconds = String(timeObj.getSeconds()).padStart(2, "0");
-  //     formattedValue = `${hours}:${minutes}:${seconds}`;
-  //   }
+  useEffect(() => {
+    const loadAddress = async () => {
+      const address = await fetchUserAddress();
+      if (address) {
+        setFormData((prevData) => ({
+          ...prevData,
+          AccountingSupplierParty: {
+            PartyIdentification: { ID: address.partyIdentificationID || "" },
+            PostalAddress: {
+              StreetName: address.streetName || "",
+              BuildingNumber: address.buildingNumber || "",
+              PlotIdentification: address.plotIdentification || "",
+              CitySubdivisionName: address.citySubdivisionName || "",
+              CityName: address.cityName || "",
+              PostalZone: address.postalZone || "",
+              CountrySubentity: address.countrySubentity || "",
+              Country: { IdentificationCode: address.country || "" },
+            },
+            PartyTaxScheme: {
+              CompanyID: address.companyID || "",
+              TaxScheme: { ID: "VAT" },
+            },
+            PartyLegalEntity: {
+              RegistrationName: address.registrationName || "",
+            },
+          },
+        }));
+      }
+    };
 
-  //   setFormData((prevData) => ({
-  //     ...prevData,
-  //     [name]: formattedValue,
-  //   }));
-  // };
+    loadAddress();
+  }, [fetchUserAddress]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     let formattedValue = value;
@@ -187,46 +210,6 @@ const InvoiceForm = () => {
     return uuidv4().toUpperCase();
   }
 
-  // const handleChangeAdditional = (e, index, key) => {
-  //   const { value } = e.target;
-  //   setFormData((prevFormData) => ({
-  //     ...prevFormData,
-  //     AdditionalDocumentReference: prevFormData.AdditionalDocumentReference.map(
-  //       (item, i) => {
-  //         if (i === index) {
-  //           if (key === "Attachment") {
-  //             return {
-  //               ...item,
-  //               [key]: {
-  //                 ...item[key],
-  //                 EmbeddedDocumentBinaryObject: value,
-  //               },
-  //             };
-  //           }
-  //           return { ...item, [key]: value };
-  //         }
-  //         return item;
-  //       }
-  //     ),
-  //   }));
-  // };
-
-  // const handleAccountingSupplierPartyChange = (
-  //   parentField,
-  //   childField,
-  //   value
-  // ) => {
-  //   setFormData((prevData) => ({
-  //     ...prevData,
-  //     AccountingSupplierParty: {
-  //       ...prevData.AccountingSupplierParty,
-  //       [parentField]: {
-  //         ...prevData.AccountingSupplierParty[parentField],
-  //         [childField]: value,
-  //       },
-  //     },
-  //   }));
-  // };
   const handleTaxTotalChange = (field, value) => {
     setFormData((prevData) => ({
       ...prevData,
@@ -287,23 +270,6 @@ const InvoiceForm = () => {
         alert("Only one discount line is allowed.");
         return prevFormData;
       }
-
-      // const hasItemOrExemption = updatedInvoiceLine.some(
-      //   (line) => line.LineType === "Item" || line.LineType === "Exemption"
-      // );
-      // const hasExportOrGCC = updatedInvoiceLine.some(
-      //   (line) => line.LineType === "Export" || line.LineType === "GCC"
-      // );
-
-      // if (
-      //   field === "LineType" &&
-      //   ((hasItemOrExemption &&
-      //     (value === "Export" || value === "GCC" || value === "Zero")) ||
-      //     (hasExportOrGCC && value === "Exemption"))
-      // ) {
-      //   alert("Invalid combination of line types.");
-      //   return prevFormData;
-      // }
 
       if (field.includes(".")) {
         const fieldArray = field.split(".");
@@ -550,7 +516,14 @@ const InvoiceForm = () => {
   useEffect(() => {
     if (selectedInvoice) {
       setFormData(selectedInvoice);
-      if (selectedInvoice.clearanceStatus === "CLEARED") {
+      setQRCodeUrl(selectedInvoice.qrCode);
+      setClearanceStatus(
+        selectedInvoice.clearanceStatus || selectedInvoice.reportingStatus
+      );
+      if (
+        selectedInvoice.clearanceStatus === "CLEARED" ||
+        selectedInvoice.clearanceStatus === "REPORTED"
+      ) {
         setIsReadOnly(true);
       }
     }
@@ -567,7 +540,7 @@ const InvoiceForm = () => {
       }
       //http://localhost:5000/invoice-form/save
       const response = await axios.post(
-        "https://zatca-e-invoice-1.onrender.com/invoice-form/save",
+        `${BASE_URL}/invoice-form/save`,
         formData
       );
       console.log("Form data saved successfully:", response.data);
@@ -577,6 +550,11 @@ const InvoiceForm = () => {
       alert("Error saving form. Please try again.");
     }
   };
+  // const formatDate = (dateString) => {
+  //   if (!dateString) return "N/A";
+  //   const date = new Date(dateString);
+  //   return isNaN(date.getTime()) ? dateString : format(date, "dd-MM-yyyy");
+  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -597,8 +575,8 @@ const InvoiceForm = () => {
       const token = localStorage.getItem("token");
       const url =
         formData.Mode === "Standard"
-          ? "https://zatca-e-invoice-1.onrender.com/submit-form-data"
-          : "https://zatca-e-invoice-1.onrender.com/submit-simplified-form-data";
+          ? `${BASE_URL}/submit-form-data`
+          : `${BASE_URL}/submit-simplified-form-data`;
       // Create new invoice
       const response = await axios.post(url, data, {
         headers: {
@@ -610,12 +588,17 @@ const InvoiceForm = () => {
 
       // Handle the QR code response
       const qrCodeUrl = response.data.qrCodeUrl;
-      const clearanceStatus = response.data.clearanceStatus;
-      console.log(qrCodeUrl);
+      console.log("qrCodeUrl in the client", qrCodeUrl);
+      const clearanceStatus =
+        response.data.clearanceStatus || response.data.reportingStatus;
+
       setQRCodeUrl(qrCodeUrl);
       setClearanceStatus(clearanceStatus);
+      setIsReadOnly(true);
       alert(
-        "Invoice generated successfully! Check the QR code and status at the top."
+        `Invoice ${
+          formData.Mode === "Standard" ? "cleared" : "reported"
+        } successfully! Check the QR code and status at the top.`
       );
       window.scrollTo({
         top: 0,
@@ -683,7 +666,9 @@ const InvoiceForm = () => {
                   <input
                     type="date"
                     name="IssueDate"
-                    value={formData.IssueDate}
+                    value={
+                      formData.IssueDate ? formData.IssueDate.split("T")[0] : ""
+                    }
                     onChange={handleChange}
                     className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
                     required
@@ -750,16 +735,28 @@ const InvoiceForm = () => {
             </div>
             <div className="flex flex-col items-center justify-start">
               {/* QR Code */}
-              <div className="bg-white shadow rounded-lg p-6 flex flex-col items-center justify-start h-full border-2 border-gray-300 ">
+              <div className="bg-white shadow rounded-lg p-6 flex flex-col items-center justify-start h-full border-2 border-gray-300">
                 <h2 className="text-xl font-bold mb-4">Status</h2>
-                {clearanceStatus === "CLEARED" ? (
+                {clearanceStatus ? (
                   <div className="text-center">
-                    <p className="text-green-500 font-bold text-xl mb-4">
-                      Cleared
+                    <p
+                      className={`font-bold text-xl mb-4 ${
+                        clearanceStatus === "CLEARED"
+                          ? "text-green-500"
+                          : clearanceStatus === "REPORTED"
+                          ? "text-blue-500"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {clearanceStatus}
                     </p>
                     {qrCodeUrl && (
                       <img
-                        src={qrCodeUrl}
+                        src={
+                          qrCodeUrl.startsWith("data:")
+                            ? qrCodeUrl
+                            : `data:image/png;base64,${qrCodeUrl}`
+                        }
                         alt="QR Code"
                         className="max-w-full mx-auto"
                       />
@@ -876,7 +873,11 @@ const InvoiceForm = () => {
               </label>
               <input
                 type="date"
-                value={formData.Delivery.ActualDeliveryDate}
+                value={
+                  formData.Delivery.ActualDeliveryDate
+                    ? formData.Delivery.ActualDeliveryDate.split("T")[0]
+                    : ""
+                }
                 onChange={(e) =>
                   setFormData((prevData) => ({
                     ...prevData,

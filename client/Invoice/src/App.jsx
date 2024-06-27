@@ -5,6 +5,7 @@ import InvoiceSearchPage from "./components/InvoiceSearchPage";
 import LoginForm from "./components/auth/LoginForm";
 import SignupForm from "./components/auth/SignupForm";
 import Navbar from "./components/Navbar";
+import AddressPage from "./components/AddressPage";
 
 const App = () => {
   return (
@@ -47,6 +48,15 @@ const App = () => {
               <>
                 <Navbar />
                 <InvoiceForm />
+              </>
+            }
+          />
+          <Route
+            path="/addresses"
+            element={
+              <>
+                <Navbar />
+                <AddressPage />
               </>
             }
           />

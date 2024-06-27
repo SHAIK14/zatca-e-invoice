@@ -1,13 +1,11 @@
+const InvoiceForm = require("../models/InvoiceForm");
+
 const { generateXMLFile } = require("../utils/zatcaSimplifiedUtils.js");
 const { processInvoiceData } = require("../utils/apiDataUtils");
 const { generateQRCodeData } = require("../utils/qrCodeUtils");
 const crypto = require("crypto");
-const { DOMParser, XMLSerializer } = require("xmldom");
 const xmlFormatter = require("xml-formatter");
-const { parseStringPromise } = require("xml2js");
-const { Builder } = require("xml2js");
 const axios = require("axios");
-const { default: formattedXml } = require("xml-formatter");
 let { ublTemplate } = require("../utils/ublTemplate.js");
 const { qrTemplate } = require("../utils/qrTemplate.js");
 const QRCode = require("qrcode");
@@ -268,13 +266,50 @@ exports.submitFormData = async (req, res) => {
       if (response.data.validationResults.status === "PASS") {
         // Generate QR code
         const qrCodeDataUrl = await QRCode.toDataURL(qrCodeData);
+        try {
+          const invoiceForm = new InvoiceForm({
+            ProfileID: invoiceData.ProfileID,
+            ID: invoiceData.ID,
+            UUID: invoiceData.UUID,
+            IssueDate: invoiceData.IssueDate,
+            IssueTime: invoiceData.IssueTime,
+            InvoiceTypeCode: invoiceData.InvoiceTypeCode,
+            DocumentCurrencyCode: invoiceData.DocumentCurrencyCode,
+            TaxCurrencyCode: invoiceData.TaxCurrencyCode,
+            LineCountNumeric: invoiceData.LineCountNumeric,
+            AdditionalDocumentReference:
+              invoiceData.AdditionalDocumentReference,
+            AccountingSupplierParty: invoiceData.AccountingSupplierParty,
+            AccountingCustomerParty: invoiceData.AccountingCustomerParty,
+            Delivery: invoiceData.Delivery,
+            PaymentMeans: invoiceData.PaymentMeans,
+            TaxTotal: invoiceData.TaxTotal,
+            LegalMonetaryTotal: invoiceData.LegalMonetaryTotal,
+            InvoiceLine: invoiceData.InvoiceLine,
+            base64XML: signedxmlbase64,
+            hashKey: hashBase64,
+            responseData: response.data,
+            clearanceStatus: response.data.reportingStatus,
+            clearanceInvoice: simplifiedXML,
+            decodedClearanceInvoice: "", // Left blank as per your instruction
+            qrCode: qrCodeDataUrl,
+            user: req.user._id,
+          });
+
+          await invoiceForm.save();
+          console.log("Invoice saved to database");
+        } catch (dbError) {
+          console.error("Error saving to database:", dbError);
+          // Continue with the response even if database save fails
+        }
 
         return res.status(200).json({
+          invoicedata: invoiceData,
           message: "Invoice submitted successfully",
           validationResults: response.data.validationResults,
           reportingStatus: response.data.reportingStatus,
           qrCodeUrl: qrCodeDataUrl,
-          clearanceStatus: "Cleared", // or any other relevant status
+          clearanceStatus: response.data.reportingStatus,
         });
       }
     } catch (error) {

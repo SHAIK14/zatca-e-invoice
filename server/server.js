@@ -11,6 +11,7 @@ const invoiceFormRoutes = require("./routes/invoiceFormRoutes.js");
 const authRoutes = require("./routes/authRoutes");
 const zatcaRoutes = require("./routes/zatcaRoutes");
 const zatcaSimplifiedRoutes = require("./routes/zatcaSimplifiedRoutes");
+const addressRoutes = require("./routes/addressRoutes");
 require("dotenv").config();
 
 connectDB();
@@ -121,6 +122,7 @@ app.use("/", zatcaRoutes);
 app.use("/", zatcaSimplifiedRoutes);
 app.use("/invoice-form", invoiceFormRoutes);
 app.use("/auth", authRoutes);
+app.use("/", addressRoutes);
 
 // Start the server
 app.listen(PORT, () => {

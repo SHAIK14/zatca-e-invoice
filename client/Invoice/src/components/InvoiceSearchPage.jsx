@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 
 const InvoiceSearchPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -8,24 +9,18 @@ const InvoiceSearchPage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [invoicesPerPage] = useState(10);
+  const BASE_URL = `http://localhost:5000`;
   const navigate = useNavigate();
-
-  useEffect(() => {
-    fetchUserInvoices();
-  }, []);
-
-  const fetchUserInvoices = async () => {
+  const fetchUserInvoices = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(
-        "https://zatca-e-invoice-1.onrender.com/invoice-form/search",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await axios.get(`${BASE_URL}/invoice-form/search`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = response.data;
+
       setInvoiceData(data);
       setErrorMessage("");
     } catch (error) {
@@ -36,13 +31,23 @@ const InvoiceSearchPage = () => {
         setErrorMessage("An error occurred while fetching invoices.");
       }
     }
+  }, [BASE_URL]); // BASE_URL is included in the dependency array
+
+  useEffect(() => {
+    fetchUserInvoices();
+  }, [fetchUserInvoices]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? "Invalid Date" : format(date, "dd-MM-yyyy");
   };
 
   const handleSearch = async () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
-        `https://zatca-e-invoice-1.onrender.com/invoice-form/search?invoiceLine=${searchTerm}`,
+        `${BASE_URL}/invoice-form/search?invoiceLine=${searchTerm}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -146,8 +151,9 @@ const InvoiceSearchPage = () => {
                     {invoice.UUID}
                   </td>
                   <td className="py-3 px-6 text-left text-gray-800">
-                    {invoice.IssueDate}
+                    {formatDate(invoice.IssueDate)}
                   </td>
+
                   <td className="py-3 px-6 text-left text-gray-800">
                     {invoice.DocumentCurrencyCode}
                   </td>
@@ -196,7 +202,8 @@ const InvoiceSearchPage = () => {
                             />
                           </svg>
                         </button>
-                      ) : invoice.clearanceStatus === "CLEARED" ? (
+                      ) : invoice.clearanceStatus === "CLEARED" ||
+                        invoice.clearanceStatus === "REPORTED" ? (
                         <button
                           onClick={() => handleView(invoice)}
                           className="w-4 mr-2 transform hover:text-purple-500 hover:scale-110"

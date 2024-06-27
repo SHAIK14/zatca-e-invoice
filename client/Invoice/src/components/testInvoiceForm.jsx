@@ -119,7 +119,7 @@ const InvoiceForm = () => {
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [qrCodeUrl, setQRCodeUrl] = useState("");
   const [showAlert, setShowAlert] = useState(false);
-
+  const BASE_URL = `http://localhost:5000`;
   const handleChange = (e) => {
     const { name, value } = e.target;
     let formattedValue = value;
@@ -247,23 +247,6 @@ const InvoiceForm = () => {
         alert("Only one discount line is allowed.");
         return prevFormData;
       }
-
-      // const hasItemOrExemption = updatedInvoiceLine.some(
-      //   (line) => line.LineType === "Item" || line.LineType === "Exemption"
-      // );
-      // const hasExportOrGCC = updatedInvoiceLine.some(
-      //   (line) => line.LineType === "Export" || line.LineType === "GCC"
-      // );
-
-      // if (
-      //   field === "LineType" &&
-      //   ((hasItemOrExemption &&
-      //     (value === "Export" || value === "GCC" || value === "Zero")) ||
-      //     (hasExportOrGCC && value === "Exemption"))
-      // ) {
-      //   alert("Invalid combination of line types.");
-      //   return prevFormData;
-      // }
 
       if (field.includes(".")) {
         const fieldArray = field.split(".");
@@ -419,89 +402,6 @@ const InvoiceForm = () => {
       return { ...prevFormData, InvoiceLine: updatedInvoiceLine };
     });
   };
-  // const removeInvoiceLine = (index) => {
-  //   setFormData((prevFormData) => {
-  //     const updatedInvoiceLine = [...prevFormData.InvoiceLine];
-  //     updatedInvoiceLine.splice(index, 1);
-
-  //     const taxCategories = updatedInvoiceLine.map(
-  //       (line) => line.Item.ClassifiedTaxCategory
-  //     );
-  //     const hasMixedTaxCategories =
-  //       taxCategories.some((category) => category.ID === "E") &&
-  //       (taxCategories.some((category) => category.ID === "S") ||
-  //         taxCategories.some((category) => category.ID === "Z"));
-
-  //     const updatedInvoiceLineWithTaxIDs = updatedInvoiceLine.map((line) => {
-  //       if (
-  //         !hasMixedTaxCategories &&
-  //         (line.Item.ClassifiedTaxCategory.Percent === "0" ||
-  //           line.Item.ClassifiedTaxCategory.ID === "Z")
-  //       ) {
-  //         return {
-  //           ...line,
-  //           Item: {
-  //             ...line.Item,
-  //             ClassifiedTaxCategory: {
-  //               ...line.Item.ClassifiedTaxCategory,
-  //               ID: line.Item.ClassifiedTaxCategory.ID === "Z" ? "Z" : "E",
-  //               // ID: "E",
-  //             },
-  //           },
-  //         };
-  //       }
-  //       return line;
-  //     });
-
-  //     const totalLineExtensionAmount = updatedInvoiceLineWithTaxIDs.reduce(
-  //       (acc, line) => acc + parseFloat(line.LineExtensionAmount || 0),
-  //       0
-  //     );
-
-  //     const totalTaxAmount = updatedInvoiceLineWithTaxIDs.reduce(
-  //       (acc, line) => acc + parseFloat(line.TaxTotal.TaxAmount || 0),
-  //       0
-  //     );
-
-  //     const taxInclusiveAmount = totalLineExtensionAmount + totalTaxAmount;
-  //     const legalMonetaryTotal = {
-  //       LineExtensionAmount: totalLineExtensionAmount.toFixed(2),
-  //       TaxExclusiveAmount: totalLineExtensionAmount.toFixed(2),
-  //       TaxInclusiveAmount: taxInclusiveAmount.toFixed(2),
-  //       AllowanceTotalAmount: "0",
-  //       PayableAmount: taxInclusiveAmount.toFixed(2),
-  //     };
-
-  //     const taxTotalTaxID = hasMixedTaxCategories
-  //       ? "O"
-  //       : taxCategories.length > 0
-  //       ? taxCategories[0].ID
-  //       : "";
-
-  //     const taxTotalData = {
-  //       TaxAmount: totalTaxAmount.toFixed(2),
-  //       TaxSubtotal: {
-  //         TaxableAmount: totalLineExtensionAmount.toFixed(2),
-  //         TaxCategory: {
-  //           ID: taxTotalTaxID,
-  //           Percent: hasMixedTaxCategories
-  //             ? "0"
-  //             : taxCategories[0]?.Percent || "",
-  //           TaxScheme: {
-  //             ID: "VAT",
-  //           },
-  //         },
-  //       },
-  //     };
-
-  //     return {
-  //       ...prevFormData,
-  //       LegalMonetaryTotal: legalMonetaryTotal,
-  //       InvoiceLine: updatedInvoiceLineWithTaxIDs,
-  //       TaxTotal: [taxTotalData],
-  //     };
-  //   });
-  // };
 
   useEffect(() => {
     if (selectedInvoice) {
@@ -522,7 +422,7 @@ const InvoiceForm = () => {
         return;
       }
       const response = await axios.post(
-        "https://zatca-e-invoice-1.onrender.com/invoice-form/save",
+        `${BASE_URL}/invoice-form/save`,
         formData
       );
       console.log("Form data saved successfully:", response.data);
@@ -551,15 +451,11 @@ const InvoiceForm = () => {
       };
 
       // Create new invoice
-      const response = await axios.post(
-        "http://localhost:5000/submit-form-data",
-        data,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await axios.post(`${BASE_URL}/submit-form-data`, data, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
       console.log("Response from backend:", response.data);
 
       // Handle the QR code response

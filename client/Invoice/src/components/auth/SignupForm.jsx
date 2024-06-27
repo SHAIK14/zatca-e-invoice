@@ -9,19 +9,17 @@ const SignupForm = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const BASE_URL = `http://localhost:5000`;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        "https://zatca-e-invoice-1.onrender.com/auth/signup",
-        {
-          fullName,
-          email,
-          username,
-          password,
-        }
-      );
+      const response = await axios.post(`${BASE_URL}/auth/signup`, {
+        fullName,
+        email,
+        username,
+        password,
+      });
       console.log(response.data.message);
       navigate("/login");
     } catch (error) {
