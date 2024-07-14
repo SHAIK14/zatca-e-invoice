@@ -1,19 +1,28 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 // import { btoa } from "b64-lite";
 import axios from "axios";
-// import { format } from "date-fns";
-// import jsonData from "./invoice.json";
+import AlertModal from "./AlertModal";
+import * as XLSX from "xlsx";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import InvoicePDF from "./InvoicePDF";
+import JSZip from "jszip";
+import { PDFDocument, StandardFonts } from "pdf-lib";
+
+import { saveAs } from "file-saver";
+import { pdf } from "@react-pdf/renderer";
 
 // import axios from "axios";
 const InvoiceForm = () => {
   // const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const selectedInvoice = location.state?.invoice;
   const [formData, setFormData] = useState({
     ProfileID: "reporting:1.0",
-    ID: "2024032399", //2024032399
+    ID: "", //2024032399
     UUID: generateUUID(),
     Mode: "",
     IssueDate: "",
@@ -53,7 +62,7 @@ const InvoiceForm = () => {
         Country: { IdentificationCode: "" }, //SA
       },
       PartyTaxScheme: {
-        CompanyID: "", //300000157210003--300000157210003
+        CompanyID: "", //300000157210003--399999999900003
         TaxScheme: { ID: "VAT" },
       },
       PartyLegalEntity: {
@@ -121,8 +130,14 @@ const InvoiceForm = () => {
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [qrCodeUrl, setQRCodeUrl] = useState("");
   const [clearanceStatus, setClearanceStatus] = useState(null);
-  // const BASE_URL = `http://localhost:5000`;
-  const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [importError, setImportError] = useState(null);
+  const [showPdfButton, setShowPdfButton] = useState(false);
+  const [pdfData, setPdfData] = useState(null);
+  const [clearedInvoiceXml, setClearedInvoiceXml] = useState(null);
+
+  const BASE_URL = `http://localhost:5000`;
+  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
 
   const fetchUserAddress = useCallback(async () => {
     try {
@@ -135,8 +150,10 @@ const InvoiceForm = () => {
       console.error("Error fetching user address:", error);
       return null;
     }
-  }, [BASE_URL]); // Add BASE_URL to the dependency array if it's not a constant
-
+  }, [BASE_URL]);
+  const goToAddressPage = () => {
+    navigate("/addresses");
+  };
   useEffect(() => {
     const loadAddress = async () => {
       const address = await fetchUserAddress();
@@ -164,6 +181,8 @@ const InvoiceForm = () => {
             },
           },
         }));
+      } else {
+        setIsAlertOpen(true);
       }
     };
 
@@ -231,7 +250,104 @@ const InvoiceForm = () => {
       },
     }));
   };
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const bstr = evt.target.result;
+          const wb = XLSX.read(bstr, { type: "binary" });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = XLSX.utils.sheet_to_json(ws);
+          console.log("data from the excel:", data);
+          processImportedData(data);
+          setImportError(null);
+        } catch (error) {
+          console.error("Error processing file:", error);
+          setImportError(
+            "Failed to process the uploaded file. Please ensure it's a valid Excel file."
+          );
+        }
+      };
+      reader.readAsBinaryString(file);
+    }
+  };
+  const processImportedData = (data) => {
+    const newInvoiceLines = data.map((row) => {
+      const lineType = row.Type; // This line was correct
 
+      let taxCategoryID, taxPercent;
+
+      switch (lineType) {
+        case "Item":
+          taxCategoryID = "S";
+          taxPercent = "15";
+          break;
+        case "Exemption":
+        case "Zero":
+          taxCategoryID = "E";
+          taxPercent = "0";
+          break;
+        case "Export":
+        case "GCC":
+          taxCategoryID = "Z";
+          taxPercent = "0";
+          break;
+        default:
+          taxCategoryID = "";
+          taxPercent = "";
+      }
+
+      return {
+        LineType: lineType,
+        ID: row.ID,
+        Price: { PriceAmount: row.Price },
+        InvoicedQuantity: { quantity: row.Quantity },
+        Item: {
+          Name: row["Item Name"],
+          ClassifiedTaxCategory: {
+            ID: taxCategoryID,
+            Percent: taxPercent,
+            TaxScheme: { ID: "VAT" },
+          },
+        },
+        DiscountAmount: row["Discount Amount"] || "0",
+        LineExtensionAmount: "",
+        TaxTotal: {
+          TaxAmount: "",
+          RoundingAmount: "",
+        },
+      };
+    });
+
+    setFormData((prevData) => ({
+      ...prevData,
+      InvoiceLine: newInvoiceLines,
+    }));
+
+    // Use setTimeout to ensure state has updated before triggering calculations
+    setTimeout(() => {
+      newInvoiceLines.forEach((line, index) => {
+        handleInvoiceLineChange(index, "LineType", line.LineType);
+        handleInvoiceLineChange(
+          index,
+          "Price.PriceAmount",
+          line.Price.PriceAmount
+        );
+        handleInvoiceLineChange(
+          index,
+          "InvoicedQuantity.quantity",
+          line.InvoicedQuantity.quantity
+        );
+        handleInvoiceLineChange(index, "Item.Name", line.Item.Name);
+        if (line.DiscountAmount) {
+          handleInvoiceLineChange(index, "DiscountAmount", line.DiscountAmount);
+        }
+      });
+    }, 0);
+  };
   const addInvoiceLine = () => {
     setFormData((prevFormData) => ({
       ...prevFormData,
@@ -430,89 +546,6 @@ const InvoiceForm = () => {
       return { ...prevFormData, InvoiceLine: updatedInvoiceLine };
     });
   };
-  // const removeInvoiceLine = (index) => {
-  //   setFormData((prevFormData) => {
-  //     const updatedInvoiceLine = [...prevFormData.InvoiceLine];
-  //     updatedInvoiceLine.splice(index, 1);
-
-  //     const taxCategories = updatedInvoiceLine.map(
-  //       (line) => line.Item.ClassifiedTaxCategory
-  //     );
-  //     const hasMixedTaxCategories =
-  //       taxCategories.some((category) => category.ID === "E") &&
-  //       (taxCategories.some((category) => category.ID === "S") ||
-  //         taxCategories.some((category) => category.ID === "Z"));
-
-  //     const updatedInvoiceLineWithTaxIDs = updatedInvoiceLine.map((line) => {
-  //       if (
-  //         !hasMixedTaxCategories &&
-  //         (line.Item.ClassifiedTaxCategory.Percent === "0" ||
-  //           line.Item.ClassifiedTaxCategory.ID === "Z")
-  //       ) {
-  //         return {
-  //           ...line,
-  //           Item: {
-  //             ...line.Item,
-  //             ClassifiedTaxCategory: {
-  //               ...line.Item.ClassifiedTaxCategory,
-  //               ID: line.Item.ClassifiedTaxCategory.ID === "Z" ? "Z" : "E",
-  //               // ID: "E",
-  //             },
-  //           },
-  //         };
-  //       }
-  //       return line;
-  //     });
-
-  //     const totalLineExtensionAmount = updatedInvoiceLineWithTaxIDs.reduce(
-  //       (acc, line) => acc + parseFloat(line.LineExtensionAmount || 0),
-  //       0
-  //     );
-
-  //     const totalTaxAmount = updatedInvoiceLineWithTaxIDs.reduce(
-  //       (acc, line) => acc + parseFloat(line.TaxTotal.TaxAmount || 0),
-  //       0
-  //     );
-
-  //     const taxInclusiveAmount = totalLineExtensionAmount + totalTaxAmount;
-  //     const legalMonetaryTotal = {
-  //       LineExtensionAmount: totalLineExtensionAmount.toFixed(2),
-  //       TaxExclusiveAmount: totalLineExtensionAmount.toFixed(2),
-  //       TaxInclusiveAmount: taxInclusiveAmount.toFixed(2),
-  //       AllowanceTotalAmount: "0",
-  //       PayableAmount: taxInclusiveAmount.toFixed(2),
-  //     };
-
-  //     const taxTotalTaxID = hasMixedTaxCategories
-  //       ? "O"
-  //       : taxCategories.length > 0
-  //       ? taxCategories[0].ID
-  //       : "";
-
-  //     const taxTotalData = {
-  //       TaxAmount: totalTaxAmount.toFixed(2),
-  //       TaxSubtotal: {
-  //         TaxableAmount: totalLineExtensionAmount.toFixed(2),
-  //         TaxCategory: {
-  //           ID: taxTotalTaxID,
-  //           Percent: hasMixedTaxCategories
-  //             ? "0"
-  //             : taxCategories[0]?.Percent || "",
-  //           TaxScheme: {
-  //             ID: "VAT",
-  //           },
-  //         },
-  //       },
-  //     };
-
-  //     return {
-  //       ...prevFormData,
-  //       LegalMonetaryTotal: legalMonetaryTotal,
-  //       InvoiceLine: updatedInvoiceLineWithTaxIDs,
-  //       TaxTotal: [taxTotalData],
-  //     };
-  //   });
-  // };
 
   useEffect(() => {
     if (selectedInvoice) {
@@ -559,6 +592,11 @@ const InvoiceForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.AccountingSupplierParty.PartyIdentification.ID) {
+      alert("Please add and select an address before creating an invoice.");
+      setIsAlertOpen(true);
+      return;
+    }
     console.log("Form submitted:", formData);
 
     try {
@@ -582,19 +620,27 @@ const InvoiceForm = () => {
       const response = await axios.post(url, data, {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Add the token to the headers
+          Authorization: `Bearer ${token}`,
         },
       });
       console.log("Response from backend:", response.data);
 
-      // Handle the QR code response
       const qrCodeUrl = response.data.qrCodeUrl;
       console.log("qrCodeUrl in the client", qrCodeUrl);
       const clearanceStatus =
         response.data.clearanceStatus || response.data.reportingStatus;
-
+      if (response.data.pdf) {
+        setPdfData(response.data.pdf);
+        setShowPdfButton(true);
+      } else {
+        console.error("PDF data not received from server");
+        alert("PDF generation failed. Please try again.");
+      }
       setQRCodeUrl(qrCodeUrl);
+      setClearedInvoiceXml(response.data.clearedInvoiceXml);
+      console.log("clearedxml in client:", response.data.clearedInvoiceXml);
       setClearanceStatus(clearanceStatus);
+
       setIsReadOnly(true);
       alert(
         `Invoice ${
@@ -620,9 +666,144 @@ const InvoiceForm = () => {
       });
     }
   };
+  // const handleDownloadPDFAndXML = async () => {
+  //   const zip = new JSZip();
+
+  //   // Generate PDF
+  //   const pdfDoc = <InvoicePDF invoiceData={formData} qrCodeUrl={qrCodeUrl} />;
+  //   const pdfBlob = await pdf(pdfDoc).toBlob();
+
+  //   // Add PDF to zip
+  //   zip.file("invoice.pdf", pdfBlob);
+
+  //   // Add XML to zip
+  //   zip.file("invoice.xml", clearedInvoiceXml);
+
+  //   // Generate and download zip
+  //   const zipContent = await zip.generateAsync({ type: "blob" });
+  //   saveAs(zipContent, "invoice_package.zip");
+  // };
+  // const handleDownloadPDFAndXML = async () => {
+  //   // Render the PDF document
+  //   const pdfDoc = <InvoicePDF invoiceData={formData} qrCodeUrl={qrCodeUrl} />;
+  //   const pdfBlob = await pdf(pdfDoc).toBlob();
+  //   const pdfArrayBuffer = await pdfBlob.arrayBuffer();
+
+  //   // Create a new PDFDocument
+  //   const pdfA3Doc = await PDFDocument.create();
+
+  //   // Embed the font
+  //   const font = await pdfA3Doc.embedFont(StandardFonts.Helvetica);
+
+  //   // Add a blank page to the document
+  //   const page = pdfA3Doc.addPage([600, 400]);
+
+  //   // Draw some text on the page
+  //   page.drawText("This is a PDF/A-3 document with an attached XML file", {
+  //     x: 50,
+  //     y: 350,
+  //     size: 15,
+  //     font,
+  //   });
+
+  //   // Embed the generated PDF
+  //   const embeddedPdf = await PDFDocument.load(pdfArrayBuffer);
+  //   const [embeddedPage] = await pdfA3Doc.copyPages(embeddedPdf, [0]);
+  //   pdfA3Doc.addPage(embeddedPage);
+
+  //   // Example XML content (replace with actual XML content)
+  //   const xmlString = clearedInvoiceXml;
+  //   const xmlArrayBuffer = new TextEncoder().encode(xmlString);
+
+  //   // Attach the XML file to the PDF document
+  //   pdfA3Doc.attach(xmlArrayBuffer, {
+  //     name: "invoice.xml",
+  //     description: "Attached XML file",
+  //     mimeType: "text/xml",
+  //     creationDate: new Date(),
+  //     modificationDate: new Date(),
+  //   });
+
+  //   // Save the PDF document as a Uint8Array
+  //   const pdfBytes = await pdfA3Doc.save();
+
+  //   // Create a blob from the PDF bytes
+  //   const blob = new Blob([pdfBytes], { type: "application/pdf" });
+
+  //   // Save the PDF document to a file
+  //   saveAs(blob, "invoice.pdf");
+  // };
+  const handleDownloadPDF = () => {
+    if (pdfData) {
+      // Convert base64 to blob
+      const byteCharacters = atob(pdfData);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "application/pdf" });
+
+      // Create download link
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `invoice_${formData.ID}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+    } else {
+      alert("PDF data is not available. Please try submitting the form again.");
+    }
+  };
+
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">ZATCA Invoice Form</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">ZATCA Invoice Form</h1>
+        <div className="flex space-x-4">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 focus:outline-none flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+              />
+            </svg>
+            New Invoice
+          </button>
+          {showPdfButton && (
+            <button
+              onClick={handleDownloadPDF}
+              className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none flex items-center"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 mr-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              PDF
+            </button>
+          )}
+        </div>
+      </div>
       <form onSubmit={handleSubmit} className="grid grid-cols-4 gap-6">
         {/* General Information */}
         <div className="col-span-4 bg-white shadow rounded-lg p-6">
@@ -933,6 +1114,7 @@ const InvoiceForm = () => {
                   )
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
             <div>
@@ -949,6 +1131,7 @@ const InvoiceForm = () => {
                   )
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
             <div>
@@ -965,6 +1148,7 @@ const InvoiceForm = () => {
                   )
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
             <div>
@@ -981,6 +1165,7 @@ const InvoiceForm = () => {
                   )
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
             <div>
@@ -997,6 +1182,7 @@ const InvoiceForm = () => {
                   )
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
           </div>
@@ -1017,6 +1203,7 @@ const InvoiceForm = () => {
                   handleTaxTotalChange("TaxAmount", e.target.value)
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
             <div>
@@ -1033,6 +1220,7 @@ const InvoiceForm = () => {
                   })
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
             <div>
@@ -1052,6 +1240,7 @@ const InvoiceForm = () => {
                   })
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
             <div>
@@ -1071,6 +1260,7 @@ const InvoiceForm = () => {
                   })
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
             <div>
@@ -1096,6 +1286,7 @@ const InvoiceForm = () => {
                   })
                 }
                 className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                readOnly
               />
             </div>
           </div>
@@ -1104,7 +1295,36 @@ const InvoiceForm = () => {
         {/* Invoice Line */}
         {/* Invoice Line */}
         <div className="col-span-4 bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Invoice Line</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold">Invoice Line</h2>
+            {!isReadOnly && (
+              <div className="flex items-center">
+                <label className="flex items-center px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none cursor-pointer transition duration-300 ease-in-out">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                  Import Excel
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    onChange={handleImport}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
           <table className="w-full text-left table-collapse">
             <thead>
               <tr>
@@ -1322,6 +1542,15 @@ const InvoiceForm = () => {
           )}
         </div>
       </form>
+      <AlertModal
+        isOpen={isAlertOpen}
+        message="No selected address found. You need to add and select an address before creating an invoice."
+        onConfirm={() => {
+          setIsAlertOpen(false);
+          goToAddressPage();
+        }}
+      />
+      {importError && <div className="text-red-500 mt-2">{importError}</div>}
     </div>
   );
 };

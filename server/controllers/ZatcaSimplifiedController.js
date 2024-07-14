@@ -9,6 +9,8 @@ const axios = require("axios");
 let { ublTemplate } = require("../utils/ublTemplate.js");
 const { qrTemplate } = require("../utils/qrTemplate.js");
 const QRCode = require("qrcode");
+const { generatePDF } = require("../utils/pdfGenerator");
+const { convertToPDFA3 } = require("../utils/pdfA3Converter");
 
 const privateKeyPEM = `-----BEGIN EC PRIVATE KEY-----
 MHQCAQEEIBCne7+Bvv/deGEav/IIfjv4oQ3/MPBkBPc8WARzvBAGoAcGBSuBBAAK
@@ -266,6 +268,17 @@ exports.submitFormData = async (req, res) => {
       if (response.data.validationResults.status === "PASS") {
         // Generate QR code
         const qrCodeDataUrl = await QRCode.toDataURL(qrCodeData);
+        const pdfBuffer = await generatePDF(invoiceData, qrCodeDataUrl);
+
+        const options = {
+          author: "Zatca",
+          title: `Invoice ${invoiceData.ID}`,
+        };
+        const pdfA3Buffer = await convertToPDFA3(
+          pdfBuffer,
+          simplifiedXML,
+          options
+        );
         try {
           const invoiceForm = new InvoiceForm({
             ProfileID: invoiceData.ProfileID,
@@ -310,6 +323,7 @@ exports.submitFormData = async (req, res) => {
           reportingStatus: response.data.reportingStatus,
           qrCodeUrl: qrCodeDataUrl,
           clearanceStatus: response.data.reportingStatus,
+          pdf: pdfA3Buffer.toString("base64"),
         });
       }
     } catch (error) {

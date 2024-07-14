@@ -11,6 +11,8 @@ const {
 } = require("../utils/zatcaUtils");
 
 const { processInvoiceData } = require("../utils/apiDataUtils");
+const { generatePDF } = require("../utils/pdfGenerator");
+const { convertToPDFA3 } = require("../utils/pdfA3Converter");
 
 exports.submitFormData = async (req, res) => {
   try {
@@ -25,21 +27,21 @@ exports.submitFormData = async (req, res) => {
     } else {
       return res.status(400).json({ error: "Invalid request data" });
     }
-    console.log("invoiceData", invoiceData);
+    // console.log("invoiceData", invoiceData);
     const mode = invoiceData.Mode;
 
-    console.log("mode in the controller file:", mode);
+    // console.log("mode in the controller file:", mode);
     const xmlData = await generateXMLFile(invoiceData);
     const xmlDataWithoutHeader = removeXMLHeader(xmlData);
     const hashKey = await generateHashKey(xmlDataWithoutHeader);
 
-    console.log("in controller xmldata:", xmlData);
-    console.log("in controller hashKey :", hashKey);
-
-    const xmlBase64 = await utf8_to_b64(xmlData);
-    console.log("XML Base64 inthe controller file:", xmlBase64);
+    // console.log("in controller xmldata:", xmlData);
     const { UUID } = invoiceData;
     console.log("UUIDin the controller file:", UUID);
+    // console.log("in controller hashKey :", hashKey);
+
+    const xmlBase64 = await utf8_to_b64(xmlData);
+    // console.log("XML Base64 inthe controller file:", xmlBase64);
 
     const payload = {
       invoiceHash: hashKey,
@@ -72,11 +74,11 @@ exports.submitFormData = async (req, res) => {
       const { infoMessages, warningMessages, errorMessages, status } =
         response.data.validationResults;
 
-      console.log("Validation Results:");
-      console.log("Info Messages:", infoMessages);
-      console.log("Warning Messages:", warningMessages);
-      console.log("Error Messages:", errorMessages);
-      console.log("Status:", status);
+      // console.log("Validation Results:");
+      // console.log("Info Messages:", infoMessages);
+      // console.log("Warning Messages:", warningMessages);
+      // console.log("Error Messages:", errorMessages);
+      // console.log("Status:", status);
 
       if (status === "ERROR") {
         return res.status(400).json({
@@ -90,7 +92,7 @@ exports.submitFormData = async (req, res) => {
       response.data.clearedInvoice,
       "base64"
     ).toString("utf-8");
-    console.log("clearedInvoiceXml:", clearedInvoiceXml);
+    // console.log("clearedInvoiceXml:", clearedInvoiceXml);
 
     xml2js.parseString(clearedInvoiceXml, (err, result) => {
       if (err) {
@@ -111,7 +113,23 @@ exports.submitFormData = async (req, res) => {
             .status(500)
             .json({ error: "An error occurred while generating the QR code" });
         }
+        const pdfBuffer = await generatePDF(invoiceData, url);
+
+        // // Convert PDF buffer to base64
+        // const pdfBase64 = pdfBuffer.toString("base64");
+        const options = {
+          author: "Zatca",
+          title: `Invoice ${invoiceData.ID}`,
+        };
+        const pdfA3Buffer = await convertToPDFA3(
+          pdfBuffer,
+          clearedInvoiceXml,
+          options
+        );
+
         try {
+          // Generate PDF/A-3
+
           const invoiceForm = new InvoiceForm({
             ProfileID: invoiceData.ProfileID,
             ID: invoiceData.ID,
@@ -150,26 +168,28 @@ exports.submitFormData = async (req, res) => {
           invoicedata: invoiceData,
           message: "Data sent to API successfully",
           responseData: response.data,
+
           clearedInvoiceXml: clearedInvoiceXml,
           qrCodeUrl: url,
           clearanceStatus: response.data.clearanceStatus,
+          pdf: pdfA3Buffer.toString("base64"),
         });
       });
     });
   } catch (error) {
-    console.error(
-      "Error:",
-      error.response ? error.response.data : error.message
-    );
+    // console.error(
+    //   "Error:",
+    //   error.response ? error.response.data : error.message
+    // );
     if (error.response && error.response.data.validationResults) {
       const { infoMessages, warningMessages, errorMessages, status } =
         error.response.data.validationResults;
 
-      console.log("Validation Results:");
-      console.log("Info Messages:", infoMessages);
-      console.log("Warning Messages:", warningMessages);
-      console.log("Error Messages:", errorMessages);
-      console.log("Status:", status);
+      // console.log("Validation Results:");
+      // console.log("Info Messages:", infoMessages);
+      // console.log("Warning Messages:", warningMessages);
+      // console.log("Error Messages:", errorMessages);
+      // console.log("Status:", status);
     }
     res.status(error.response ? error.response.status : 500).json({
       error: error.response
