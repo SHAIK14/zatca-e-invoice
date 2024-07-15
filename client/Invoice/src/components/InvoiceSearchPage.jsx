@@ -9,8 +9,8 @@ const InvoiceSearchPage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [invoicesPerPage] = useState(10);
-  const BASE_URL = `http://localhost:5000`;
-  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  // const BASE_URL = `http://localhost:5000`;
+  const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
 
   const navigate = useNavigate();
   const fetchUserInvoices = useCallback(async () => {
