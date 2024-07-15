@@ -10,7 +10,7 @@ const authRoutes = require("./routes/authRoutes");
 const zatcaRoutes = require("./routes/zatcaRoutes");
 const zatcaSimplifiedRoutes = require("./routes/zatcaSimplifiedRoutes");
 const addressRoutes = require("./routes/addressRoutes");
-const pdfRoutes = require("./routes/pdfRoutes");
+
 require("dotenv").config();
 
 connectDB();
@@ -27,7 +27,6 @@ app.use("/", zatcaSimplifiedRoutes);
 app.use("/invoice-form", invoiceFormRoutes);
 app.use("/auth", authRoutes);
 app.use("/", addressRoutes);
-app.use("/pdf", pdfRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
