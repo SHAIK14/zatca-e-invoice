@@ -42,9 +42,11 @@ const generateXMLFile = async (formData) => {
         <cbc:Name>${line.Item.Name}</cbc:Name>
         <cac:ClassifiedTaxCategory>
             <cbc:ID>${line.Item.ClassifiedTaxCategory?.ID || ""}</cbc:ID>
-            <cbc:Percent>${
-              line.Item.ClassifiedTaxCategory?.Percent || ""
-            }</cbc:Percent>
+           <cbc:Percent>${
+             line.Item.ClassifiedTaxCategory?.Percent !== undefined
+               ? line.Item.ClassifiedTaxCategory.Percent
+               : "0"
+           }</cbc:Percent>
             <cac:TaxScheme>
                 <cbc:ID>${
                   line.Item.ClassifiedTaxCategory?.TaxScheme?.ID || ""

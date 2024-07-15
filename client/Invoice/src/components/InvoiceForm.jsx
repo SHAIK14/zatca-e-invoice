@@ -129,8 +129,8 @@ const InvoiceForm = () => {
   const [pdfData, setPdfData] = useState(null);
   const [clearedInvoiceXml, setClearedInvoiceXml] = useState(null);
 
-  // const BASE_URL = `http://localhost:5000`;
-  const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  const BASE_URL = `http://localhost:5000`;
+  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
 
   const fetchUserAddress = useCallback(async () => {
     try {
@@ -222,7 +222,21 @@ const InvoiceForm = () => {
   function generateUUID() {
     return uuidv4().toUpperCase();
   }
+  const handleCustomerChange = (field, value) => {
+    setFormData((prevData) => {
+      const newData = { ...prevData };
+      const fieldParts = field.split(".");
+      let currentObj = newData.AccountingCustomerParty;
 
+      for (let i = 0; i < fieldParts.length - 1; i++) {
+        currentObj = currentObj[fieldParts[i]];
+      }
+
+      currentObj[fieldParts[fieldParts.length - 1]] = value;
+
+      return newData;
+    });
+  };
   const handleTaxTotalChange = (field, value) => {
     setFormData((prevData) => ({
       ...prevData,
@@ -955,56 +969,139 @@ const InvoiceForm = () => {
               <input
                 type="text"
                 value={formData.AccountingCustomerParty.PartyIdentification.ID}
-                className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
+                onChange={(e) =>
+                  handleCustomerChange("PartyIdentification.ID", e.target.value)
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-gray-700 font-bold mb-2">
-                Street
+                Street Name
               </label>
               <input
                 type="text"
                 value={
                   formData.AccountingCustomerParty.PostalAddress.StreetName
                 }
-                className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
+                onChange={(e) =>
+                  handleCustomerChange(
+                    "PostalAddress.StreetName",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-gray-700 font-bold mb-2">
-                Building No.
+                Building Number
               </label>
               <input
                 type="text"
                 value={
                   formData.AccountingCustomerParty.PostalAddress.BuildingNumber
                 }
-                className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">City</label>
-              <input
-                type="text"
-                value={formData.AccountingCustomerParty.PostalAddress.CityName}
-                className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
+                onChange={(e) =>
+                  handleCustomerChange(
+                    "PostalAddress.BuildingNumber",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-gray-700 font-bold mb-2">
-                Postal Code
+                Plot Identification
+              </label>
+              <input
+                type="text"
+                value={
+                  formData.AccountingCustomerParty.PostalAddress
+                    .PlotIdentification
+                }
+                onChange={(e) =>
+                  handleCustomerChange(
+                    "PostalAddress.PlotIdentification",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">
+                City Subdivision Name
+              </label>
+              <input
+                type="text"
+                value={
+                  formData.AccountingCustomerParty.PostalAddress
+                    .CitySubdivisionName
+                }
+                onChange={(e) =>
+                  handleCustomerChange(
+                    "PostalAddress.CitySubdivisionName",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">
+                City Name
+              </label>
+              <input
+                type="text"
+                value={formData.AccountingCustomerParty.PostalAddress.CityName}
+                onChange={(e) =>
+                  handleCustomerChange("PostalAddress.CityName", e.target.value)
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">
+                Postal Zone
               </label>
               <input
                 type="text"
                 value={
                   formData.AccountingCustomerParty.PostalAddress.PostalZone
                 }
-                className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
+                onChange={(e) =>
+                  handleCustomerChange(
+                    "PostalAddress.PostalZone",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
               />
             </div>
             <div>
               <label className="block text-gray-700 font-bold mb-2">
-                Country
+                Country Subentity
+              </label>
+              <input
+                type="text"
+                value={
+                  formData.AccountingCustomerParty.PostalAddress
+                    .CountrySubentity
+                }
+                onChange={(e) =>
+                  handleCustomerChange(
+                    "PostalAddress.CountrySubentity",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">
+                Country Identification Code
               </label>
               <input
                 type="text"
@@ -1012,7 +1109,31 @@ const InvoiceForm = () => {
                   formData.AccountingCustomerParty.PostalAddress.Country
                     .IdentificationCode
                 }
-                className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
+                onChange={(e) =>
+                  handleCustomerChange(
+                    "PostalAddress.Country.IdentificationCode",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-bold mb-2">
+                Party Tax Scheme ID
+              </label>
+              <input
+                type="text"
+                value={
+                  formData.AccountingCustomerParty.PartyTaxScheme.TaxScheme.ID
+                }
+                onChange={(e) =>
+                  handleCustomerChange(
+                    "PartyTaxScheme.TaxScheme.ID",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
               />
             </div>
             <div>
@@ -1025,7 +1146,13 @@ const InvoiceForm = () => {
                   formData.AccountingCustomerParty.PartyLegalEntity
                     .RegistrationName
                 }
-                className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
+                onChange={(e) =>
+                  handleCustomerChange(
+                    "PartyLegalEntity.RegistrationName",
+                    e.target.value
+                  )
+                }
+                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
               />
             </div>
           </div>
