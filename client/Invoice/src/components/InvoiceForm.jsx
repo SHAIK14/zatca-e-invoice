@@ -6,13 +6,6 @@ import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import AlertModal from "./AlertModal";
 import * as XLSX from "xlsx";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import InvoicePDF from "./InvoicePDF";
-import JSZip from "jszip";
-import { PDFDocument, StandardFonts } from "pdf-lib";
-
-import { saveAs } from "file-saver";
-import { pdf } from "@react-pdf/renderer";
 
 // import axios from "axios";
 const InvoiceForm = () => {
@@ -70,20 +63,20 @@ const InvoiceForm = () => {
       },
     },
     AccountingCustomerParty: {
-      PartyIdentification: { ID: "4030232477" },
+      PartyIdentification: { ID: "" }, //4030232477
       PostalAddress: {
-        StreetName: "7524",
-        BuildingNumber: "1234",
-        PlotIdentification: "3675",
-        CitySubdivisionName: "Mecca Al Mokarama",
-        CityName: "Riyad",
-        PostalZone: "12244",
-        CountrySubentity: "Riyadh Region",
-        Country: { IdentificationCode: "SA" },
+        StreetName: "", //7524
+        BuildingNumber: "", //1234
+        PlotIdentification: "", //3675
+        CitySubdivisionName: "", //Mecca Al Mokarama
+        CityName: "", //Riyad
+        PostalZone: "", //12244
+        CountrySubentity: " ", //RiyadhRegion
+        Country: { IdentificationCode: "" }, //SA
       },
-      PartyTaxScheme: { TaxScheme: { ID: "VAT" } },
+      PartyTaxScheme: { TaxScheme: { ID: "" } }, //VAT
       PartyLegalEntity: {
-        RegistrationName: "فرع شركة سيرفكورب سكوير بي تي اي ليمتد",
+        RegistrationName: "", //فرع شركة سيرفكورب سكوير بي تي اي ليمتد
       },
     },
     Delivery: { ActualDeliveryDate: "" },
@@ -963,7 +956,6 @@ const InvoiceForm = () => {
                 type="text"
                 value={formData.AccountingCustomerParty.PartyIdentification.ID}
                 className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
-                readOnly
               />
             </div>
             <div>
@@ -976,7 +968,6 @@ const InvoiceForm = () => {
                   formData.AccountingCustomerParty.PostalAddress.StreetName
                 }
                 className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
-                readOnly
               />
             </div>
             <div>
@@ -989,7 +980,6 @@ const InvoiceForm = () => {
                   formData.AccountingCustomerParty.PostalAddress.BuildingNumber
                 }
                 className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
-                readOnly
               />
             </div>
             <div>
@@ -998,7 +988,6 @@ const InvoiceForm = () => {
                 type="text"
                 value={formData.AccountingCustomerParty.PostalAddress.CityName}
                 className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
-                readOnly
               />
             </div>
             <div>
@@ -1011,7 +1000,6 @@ const InvoiceForm = () => {
                   formData.AccountingCustomerParty.PostalAddress.PostalZone
                 }
                 className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
-                readOnly
               />
             </div>
             <div>
@@ -1025,7 +1013,6 @@ const InvoiceForm = () => {
                     .IdentificationCode
                 }
                 className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
-                readOnly
               />
             </div>
             <div>
@@ -1039,7 +1026,6 @@ const InvoiceForm = () => {
                     .RegistrationName
                 }
                 className="w-full px-3 py-2 text-gray-700 bg-gray-100 rounded-lg focus:outline-none"
-                readOnly
               />
             </div>
           </div>
