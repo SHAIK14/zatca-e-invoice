@@ -43,6 +43,8 @@ AiA9hC4M8jgMBADPSzmd2uiPJA6gKR3LE03U75eqbC/rXA==
 -----END CERTIFICATE-----`;
 exports.submitFormData = async (req, res) => {
   try {
+    const { action } = req.body;
+    console.log("action in the controller:", action);
     let invoiceData;
     if (req.body.formData) {
       // Data received from the form
@@ -222,68 +224,108 @@ exports.submitFormData = async (req, res) => {
 
     console.log("signedxmlbase64:", signedxmlbase64);
 
+    /////////////////////qr code and pdf//////////////////////////////
+
+    const qrCodeDataUrl = await QRCode.toDataURL(qrCodeData);
+    const pdfBuffer = await generatePDF(invoiceData, qrCodeDataUrl);
+
+    const options = {
+      author: "Zatca",
+      title: `Invoice ${invoiceData.ID}`,
+    };
+    const pdfA3Buffer = await convertToPDFA3(pdfBuffer, simplifiedXML, options);
+
     //-----------------API--------------------------//
-    const payload = {
-      invoiceHash: hashBase64,
-      uuid: UUID,
-      invoice: signedxmlbase64,
-    };
-    console.log("playload", payload);
-    const username =
-      "TUlJRDNqQ0NBNFNnQXdJQkFnSVRFUUFBT0FQRjkwQWpzL3hjWHdBQkFBQTRBekFLQmdncWhrak9QUVFEQWpCaU1SVXdFd1lLQ1pJbWlaUHlMR1FCR1JZRmJHOWpZV3d4RXpBUkJnb0praWFKay9Jc1pBRVpGZ05uYjNZeEZ6QVZCZ29Ka2lhSmsvSXNaQUVaRmdkbGVIUm5ZWHAwTVJzd0dRWURWUVFERXhKUVVscEZTVTVXVDBsRFJWTkRRVFF0UTBFd0hoY05NalF3TVRFeE1Ea3hPVE13V2hjTk1qa3dNVEE1TURreE9UTXdXakIxTVFzd0NRWURWUVFHRXdKVFFURW1NQ1FHQTFVRUNoTWRUV0Y0YVcxMWJTQlRjR1ZsWkNCVVpXTm9JRk4xY0hCc2VTQk1WRVF4RmpBVUJnTlZCQXNURFZKcGVXRmthQ0JDY21GdVkyZ3hKakFrQmdOVkJBTVRIVlJUVkMwNE9EWTBNekV4TkRVdE16azVPVGs1T1RrNU9UQXdNREF6TUZZd0VBWUhLb1pJemowQ0FRWUZLNEVFQUFvRFFnQUVvV0NLYTBTYTlGSUVyVE92MHVBa0MxVklLWHhVOW5QcHgydmxmNHloTWVqeThjMDJYSmJsRHE3dFB5ZG84bXEwYWhPTW1Obzhnd25pN1h0MUtUOVVlS09DQWdjd2dnSURNSUd0QmdOVkhSRUVnYVV3Z2FLa2daOHdnWnd4T3pBNUJnTlZCQVFNTWpFdFZGTlVmREl0VkZOVWZETXRaV1F5TW1ZeFpEZ3RaVFpoTWkweE1URTRMVGxpTlRndFpEbGhPR1l4TVdVME5EVm1NUjh3SFFZS0NaSW1pWlB5TEdRQkFRd1BNems1T1RrNU9UazVPVEF3TURBek1RMHdDd1lEVlFRTURBUXhNVEF3TVJFd0R3WURWUVFhREFoU1VsSkVNamt5T1RFYU1CZ0dBMVVFRHd3UlUzVndjR3g1SUdGamRHbDJhWFJwWlhNd0hRWURWUjBPQkJZRUZFWCtZdm1tdG5Zb0RmOUJHYktvN29jVEtZSzFNQjhHQTFVZEl3UVlNQmFBRkp2S3FxTHRtcXdza0lGelZ2cFAyUHhUKzlObk1Ic0dDQ3NHQVFVRkJ3RUJCRzh3YlRCckJnZ3JCZ0VGQlFjd0FvWmZhSFIwY0RvdkwyRnBZVFF1ZW1GMFkyRXVaMjkyTG5OaEwwTmxjblJGYm5KdmJHd3ZVRkphUlVsdWRtOXBZMlZUUTBFMExtVjRkR2RoZW5RdVoyOTJMbXh2WTJGc1gxQlNXa1ZKVGxaUFNVTkZVME5CTkMxRFFTZ3hLUzVqY25Rd0RnWURWUjBQQVFIL0JBUURBZ2VBTUR3R0NTc0dBUVFCZ2pjVkJ3UXZNQzBHSlNzR0FRUUJnamNWQ0lHR3FCMkUwUHNTaHUyZEpJZk8reG5Ud0ZWbWgvcWxaWVhaaEQ0Q0FXUUNBUkl3SFFZRFZSMGxCQll3RkFZSUt3WUJCUVVIQXdNR0NDc0dBUVVGQndNQ01DY0dDU3NHQVFRQmdqY1ZDZ1FhTUJnd0NnWUlLd1lCQlFVSEF3TXdDZ1lJS3dZQkJRVUhBd0l3Q2dZSUtvWkl6ajBFQXdJRFNBQXdSUUloQUxFL2ljaG1uV1hDVUtVYmNhM3ljaThvcXdhTHZGZEhWalFydmVJOXVxQWJBaUE5aEM0TThqZ01CQURQU3ptZDJ1aVBKQTZnS1IzTEUwM1U3NWVxYkMvclhBPT0=";
-    const password = "CkYsEXfV8c1gFHAtFWoZv73pGMvh/Qyo4LzKM2h/8Hg=";
-    const apiUrl =
-      "https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal/invoices/reporting/single";
-    const auth = Buffer.from(`${username}:${password}`).toString("base64");
-    const headers = {
-      accept: "application/json",
-      "accept-language": "en",
-      Authorization: `Basic ${auth}`,
-      "Accept-Version": "V2",
-      "Content-Type": "application/json",
-    };
-    try {
-      const response = await axios.post(apiUrl, payload, { headers });
-      console.log("API Response:", JSON.stringify(response.data, null, 2));
+    if (action === "getQR") {
+      const invoiceForm = new InvoiceForm({
+        ProfileID: invoiceData.ProfileID,
+        ID: invoiceData.ID,
+        UUID: invoiceData.UUID,
+        Mode: invoiceData.Mode,
+        IssueDate: invoiceData.IssueDate,
+        IssueTime: invoiceData.IssueTime,
+        InvoiceTypeCode: invoiceData.InvoiceTypeCode,
+        DocumentCurrencyCode: invoiceData.DocumentCurrencyCode,
+        TaxCurrencyCode: invoiceData.TaxCurrencyCode,
+        LineCountNumeric: invoiceData.LineCountNumeric,
+        AdditionalDocumentReference: invoiceData.AdditionalDocumentReference,
+        AccountingSupplierParty: invoiceData.AccountingSupplierParty,
+        AccountingCustomerParty: invoiceData.AccountingCustomerParty,
+        Delivery: invoiceData.Delivery,
+        PaymentMeans: invoiceData.PaymentMeans,
+        TaxTotal: invoiceData.TaxTotal,
+        LegalMonetaryTotal: invoiceData.LegalMonetaryTotal,
+        InvoiceLine: invoiceData.InvoiceLine,
+        base64XML: signedxmlbase64,
+        hashKey: hashBase64,
 
-      if (response.data.validationResults) {
-        const { infoMessages, warningMessages, errorMessages, status } =
-          response.data.validationResults;
+        clearanceInvoice: simplifiedXML,
 
-        console.log("Validation Results:");
-        console.log("Info Messages:", infoMessages);
-        console.log("Warning Messages:", warningMessages);
-        console.log("Error Messages:", errorMessages);
-        console.log("Status:", status);
+        qrCode: qrCodeDataUrl,
+        user: req.user._id,
+        submissionStatus: "PENDING_SUBMISSION",
+        qrCode: qrCodeDataUrl,
+        pdfData: pdfA3Buffer.toString("base64"),
+      });
+      await invoiceForm.save();
 
-        if (status === "ERROR") {
-          return res.status(400).json({
-            error: "Validation failed",
-            validationResults: response.data.validationResults,
-            reportingStatus: response.data.reportingStatus,
-          });
+      return res.status(200).json({
+        message: "QR code and PDF generated successfully",
+        qrCodeUrl: qrCodeDataUrl,
+        pdf: pdfA3Buffer.toString("base64"),
+        invoiceId: invoiceForm._id,
+      });
+    } else if (action === "submit") {
+      const payload = {
+        invoiceHash: hashBase64,
+        uuid: UUID,
+        invoice: signedxmlbase64,
+      };
+      console.log("playload", payload);
+      const username =
+        "TUlJRDNqQ0NBNFNnQXdJQkFnSVRFUUFBT0FQRjkwQWpzL3hjWHdBQkFBQTRBekFLQmdncWhrak9QUVFEQWpCaU1SVXdFd1lLQ1pJbWlaUHlMR1FCR1JZRmJHOWpZV3d4RXpBUkJnb0praWFKay9Jc1pBRVpGZ05uYjNZeEZ6QVZCZ29Ka2lhSmsvSXNaQUVaRmdkbGVIUm5ZWHAwTVJzd0dRWURWUVFERXhKUVVscEZTVTVXVDBsRFJWTkRRVFF0UTBFd0hoY05NalF3TVRFeE1Ea3hPVE13V2hjTk1qa3dNVEE1TURreE9UTXdXakIxTVFzd0NRWURWUVFHRXdKVFFURW1NQ1FHQTFVRUNoTWRUV0Y0YVcxMWJTQlRjR1ZsWkNCVVpXTm9JRk4xY0hCc2VTQk1WRVF4RmpBVUJnTlZCQXNURFZKcGVXRmthQ0JDY21GdVkyZ3hKakFrQmdOVkJBTVRIVlJUVkMwNE9EWTBNekV4TkRVdE16azVPVGs1T1RrNU9UQXdNREF6TUZZd0VBWUhLb1pJemowQ0FRWUZLNEVFQUFvRFFnQUVvV0NLYTBTYTlGSUVyVE92MHVBa0MxVklLWHhVOW5QcHgydmxmNHloTWVqeThjMDJYSmJsRHE3dFB5ZG84bXEwYWhPTW1Obzhnd25pN1h0MUtUOVVlS09DQWdjd2dnSURNSUd0QmdOVkhSRUVnYVV3Z2FLa2daOHdnWnd4T3pBNUJnTlZCQVFNTWpFdFZGTlVmREl0VkZOVWZETXRaV1F5TW1ZeFpEZ3RaVFpoTWkweE1URTRMVGxpTlRndFpEbGhPR1l4TVdVME5EVm1NUjh3SFFZS0NaSW1pWlB5TEdRQkFRd1BNems1T1RrNU9UazVPVEF3TURBek1RMHdDd1lEVlFRTURBUXhNVEF3TVJFd0R3WURWUVFhREFoU1VsSkVNamt5T1RFYU1CZ0dBMVVFRHd3UlUzVndjR3g1SUdGamRHbDJhWFJwWlhNd0hRWURWUjBPQkJZRUZFWCtZdm1tdG5Zb0RmOUJHYktvN29jVEtZSzFNQjhHQTFVZEl3UVlNQmFBRkp2S3FxTHRtcXdza0lGelZ2cFAyUHhUKzlObk1Ic0dDQ3NHQVFVRkJ3RUJCRzh3YlRCckJnZ3JCZ0VGQlFjd0FvWmZhSFIwY0RvdkwyRnBZVFF1ZW1GMFkyRXVaMjkyTG5OaEwwTmxjblJGYm5KdmJHd3ZVRkphUlVsdWRtOXBZMlZUUTBFMExtVjRkR2RoZW5RdVoyOTJMbXh2WTJGc1gxQlNXa1ZKVGxaUFNVTkZVME5CTkMxRFFTZ3hLUzVqY25Rd0RnWURWUjBQQVFIL0JBUURBZ2VBTUR3R0NTc0dBUVFCZ2pjVkJ3UXZNQzBHSlNzR0FRUUJnamNWQ0lHR3FCMkUwUHNTaHUyZEpJZk8reG5Ud0ZWbWgvcWxaWVhaaEQ0Q0FXUUNBUkl3SFFZRFZSMGxCQll3RkFZSUt3WUJCUVVIQXdNR0NDc0dBUVVGQndNQ01DY0dDU3NHQVFRQmdqY1ZDZ1FhTUJnd0NnWUlLd1lCQlFVSEF3TXdDZ1lJS3dZQkJRVUhBd0l3Q2dZSUtvWkl6ajBFQXdJRFNBQXdSUUloQUxFL2ljaG1uV1hDVUtVYmNhM3ljaThvcXdhTHZGZEhWalFydmVJOXVxQWJBaUE5aEM0TThqZ01CQURQU3ptZDJ1aVBKQTZnS1IzTEUwM1U3NWVxYkMvclhBPT0=";
+      const password = "CkYsEXfV8c1gFHAtFWoZv73pGMvh/Qyo4LzKM2h/8Hg=";
+      const apiUrl =
+        "https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal/invoices/reporting/single";
+      const auth = Buffer.from(`${username}:${password}`).toString("base64");
+      const headers = {
+        accept: "application/json",
+        "accept-language": "en",
+        Authorization: `Basic ${auth}`,
+        "Accept-Version": "V2",
+        "Content-Type": "application/json",
+      };
+      try {
+        const response = await axios.post(apiUrl, payload, { headers });
+        console.log("API Response:", JSON.stringify(response.data, null, 2));
+
+        if (response.data.validationResults) {
+          const { infoMessages, warningMessages, errorMessages, status } =
+            response.data.validationResults;
+
+          console.log("Validation Results:");
+          console.log("Info Messages:", infoMessages);
+          console.log("Warning Messages:", warningMessages);
+          console.log("Error Messages:", errorMessages);
+          console.log("Status:", status);
+
+          if (status === "ERROR") {
+            return res.status(400).json({
+              error: "Validation failed",
+              validationResults: response.data.validationResults,
+              reportingStatus: response.data.reportingStatus,
+            });
+          }
         }
-      }
 
-      if (response.data.validationResults.status === "PASS") {
-        // Generate QR code
-        const qrCodeDataUrl = await QRCode.toDataURL(qrCodeData);
-        const pdfBuffer = await generatePDF(invoiceData, qrCodeDataUrl);
+        if (response.data.validationResults.status === "PASS") {
+          // Generate QR code
 
-        const options = {
-          author: "Zatca",
-          title: `Invoice ${invoiceData.ID}`,
-        };
-        const pdfA3Buffer = await convertToPDFA3(
-          pdfBuffer,
-          simplifiedXML,
-          options
-        );
-        try {
           const invoiceForm = new InvoiceForm({
             ProfileID: invoiceData.ProfileID,
             ID: invoiceData.ID,
             UUID: invoiceData.UUID,
+            Mode: invoiceData.Mode,
             IssueDate: invoiceData.IssueDate,
             IssueTime: invoiceData.IssueTime,
             InvoiceTypeCode: invoiceData.InvoiceTypeCode,
@@ -302,67 +344,66 @@ exports.submitFormData = async (req, res) => {
             base64XML: signedxmlbase64,
             hashKey: hashBase64,
             responseData: response.data,
+            submissionStatus: "SUBMITTED",
             clearanceStatus: response.data.reportingStatus,
             clearanceInvoice: simplifiedXML,
             decodedClearanceInvoice: "", // Left blank as per your instruction
             qrCode: qrCodeDataUrl,
             user: req.user._id,
+            pdfData: pdfA3Buffer.toString("base64"),
           });
 
           await invoiceForm.save();
           console.log("Invoice saved to database");
-        } catch (dbError) {
-          console.error("Error saving to database:", dbError);
-          // Continue with the response even if database save fails
+
+          return res.status(200).json({
+            invoicedata: invoiceData,
+            message: "Invoice submitted successfully",
+            validationResults: response.data.validationResults,
+            reportingStatus: response.data.reportingStatus,
+            qrCodeUrl: qrCodeDataUrl,
+            clearanceStatus: response.data.reportingStatus,
+            pdf: pdfA3Buffer.toString("base64"),
+          });
         }
+      } catch (error) {
+        if (error.response && error.response.data) {
+          console.error("Error calling ZATCA API:");
+          console.error("Status Code:", error.response.status);
+          console.error("Validation Results:");
 
-        return res.status(200).json({
-          invoicedata: invoiceData,
-          message: "Invoice submitted successfully",
-          validationResults: response.data.validationResults,
-          reportingStatus: response.data.reportingStatus,
-          qrCodeUrl: qrCodeDataUrl,
-          clearanceStatus: response.data.reportingStatus,
-          pdf: pdfA3Buffer.toString("base64"),
-        });
-      }
-    } catch (error) {
-      if (error.response && error.response.data) {
-        console.error("Error calling ZATCA API:");
-        console.error("Status Code:", error.response.status);
-        console.error("Validation Results:");
+          const { validationResults, reportingStatus } = error.response.data;
 
-        const { validationResults, reportingStatus } = error.response.data;
+          if (validationResults) {
+            console.error(
+              "Info Messages:",
+              JSON.stringify(validationResults.infoMessages, null, 2)
+            );
+            console.error(
+              "Warning Messages:",
+              JSON.stringify(validationResults.warningMessages, null, 2)
+            );
+            console.error(
+              "Error Messages:",
+              JSON.stringify(validationResults.errorMessages, null, 2)
+            );
+            console.error("Status:", validationResults.status);
+          }
 
-        if (validationResults) {
-          console.error(
-            "Info Messages:",
-            JSON.stringify(validationResults.infoMessages, null, 2)
-          );
-          console.error(
-            "Warning Messages:",
-            JSON.stringify(validationResults.warningMessages, null, 2)
-          );
-          console.error(
-            "Error Messages:",
-            JSON.stringify(validationResults.errorMessages, null, 2)
-          );
-          console.error("Status:", validationResults.status);
+          console.error("Reporting Status:", reportingStatus);
+
+          return res.status(error.response.status).json({
+            error: "ZATCA API Validation Error",
+            validationResults: validationResults,
+            reportingStatus: reportingStatus,
+          });
+        } else {
+          console.error("Error calling ZATCA API:", error.message);
+          return res.status(500).json({
+            error: "Error calling ZATCA API",
+            message: error.message,
+          });
         }
-
-        console.error("Reporting Status:", reportingStatus);
-
-        return res.status(error.response.status).json({
-          error: "ZATCA API Validation Error",
-          validationResults: validationResults,
-          reportingStatus: reportingStatus,
-        });
-      } else {
-        console.error("Error calling ZATCA API:", error.message);
-        return res.status(500).json({
-          error: "Error calling ZATCA API",
-          message: error.message,
-        });
       }
     }
   } catch (error) {

@@ -27,8 +27,16 @@ exports.submitFormData = async (req, res) => {
     } else {
       return res.status(400).json({ error: "Invalid request data" });
     }
-    // console.log("invoiceData", invoiceData);
-    const mode = invoiceData.Mode;
+
+    if (!invoiceData.Mode) {
+      return res.status(400).json({ error: "Mode is required" });
+    }
+    console.log("Received invoice data in the controllerfile:", invoiceData);
+
+    // const mode = invoiceData.Mode;
+    invoiceData = preprocessInvoiceData(invoiceData);
+
+    console.log("Preprocessed invoice data:", invoiceData);
 
     // console.log("mode in the controller file:", mode);
     const xmlData = await generateXMLFile(invoiceData);
@@ -134,6 +142,7 @@ exports.submitFormData = async (req, res) => {
             ProfileID: invoiceData.ProfileID,
             ID: invoiceData.ID,
             UUID: invoiceData.UUID,
+            Mode: invoiceData.Mode,
             IssueDate: invoiceData.IssueDate,
             IssueTime: invoiceData.IssueTime,
             InvoiceTypeCode: invoiceData.InvoiceTypeCode,
@@ -156,10 +165,13 @@ exports.submitFormData = async (req, res) => {
             clearanceInvoice: response.data.clearedInvoice,
             decodedClearanceInvoice: clearedInvoiceXml,
             qrCode: url,
+            submissionStatus: "SUBMITTED",
             user: req.user._id,
+            pdfData: pdfA3Buffer.toString("base64"),
           });
 
           await invoiceForm.save();
+          console.log(`Invoice ${invoiceForm.ID} saved with SUBMITTED status`);
         } catch (error) {
           console.error("Error saving invoice form:", error);
           res.status(500).json({ message: "Internal server error" });
@@ -177,19 +189,19 @@ exports.submitFormData = async (req, res) => {
       });
     });
   } catch (error) {
-    // console.error(
-    //   "Error:",
-    //   error.response ? error.response.data : error.message
-    // );
+    console.error(
+      "Error:",
+      error.response ? error.response.data : error.message
+    );
     if (error.response && error.response.data.validationResults) {
       const { infoMessages, warningMessages, errorMessages, status } =
         error.response.data.validationResults;
 
-      // console.log("Validation Results:");
-      // console.log("Info Messages:", infoMessages);
-      // console.log("Warning Messages:", warningMessages);
-      // console.log("Error Messages:", errorMessages);
-      // console.log("Status:", status);
+      console.log("Validation Results:");
+      console.log("Info Messages:", infoMessages);
+      console.log("Warning Messages:", warningMessages);
+      console.log("Error Messages:", errorMessages);
+      console.log("Status:", status);
     }
     res.status(error.response ? error.response.status : 500).json({
       error: error.response
@@ -198,3 +210,28 @@ exports.submitFormData = async (req, res) => {
     });
   }
 };
+function preprocessInvoiceData(data) {
+  // Ensure dates are in the correct format
+  if (data.IssueDate) {
+    data.IssueDate = new Date(data.IssueDate).toISOString().split("T")[0];
+  }
+  if (data.Delivery && data.Delivery.ActualDeliveryDate) {
+    data.Delivery.ActualDeliveryDate = new Date(
+      data.Delivery.ActualDeliveryDate
+    )
+      .toISOString()
+      .split("T")[0];
+  }
+
+  // Ensure VAT number is correct
+  if (
+    data.AccountingSupplierParty &&
+    data.AccountingSupplierParty.PartyTaxScheme
+  ) {
+    data.AccountingSupplierParty.PartyTaxScheme.CompanyID = "300000157210003"; // Replace with your actual VAT number
+  }
+
+  // Add any other necessary preprocessing steps
+
+  return data;
+}

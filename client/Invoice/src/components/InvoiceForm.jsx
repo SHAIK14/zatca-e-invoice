@@ -128,9 +128,11 @@ const InvoiceForm = () => {
   const [showPdfButton, setShowPdfButton] = useState(false);
   const [pdfData, setPdfData] = useState(null);
   const [clearedInvoiceXml, setClearedInvoiceXml] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showGetQRButton, setShowGetQRButton] = useState(false);
 
-  // const BASE_URL = `http://localhost:5000`;
-  const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  const BASE_URL = `http://localhost:5000`;
+  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
 
   const fetchUserAddress = useCallback(async () => {
     try {
@@ -181,6 +183,27 @@ const InvoiceForm = () => {
 
     loadAddress();
   }, [fetchUserAddress]);
+  const fetchInvoiceID = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${BASE_URL}/id/generate-invoice-id`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setFormData((prevData) => ({
+        ...prevData,
+        ID: response.data.invoiceID,
+      }));
+    } catch (error) {
+      console.error("Error fetching invoice ID:", error);
+      // Handle error (e.g., show an alert to the user)
+    }
+  }, [BASE_URL]);
+
+  useEffect(() => {
+    if (!selectedInvoice && !formData.ID) {
+      fetchInvoiceID();
+    }
+  }, [selectedInvoice, formData.ID, fetchInvoiceID]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     let formattedValue = value;
@@ -214,6 +237,8 @@ const InvoiceForm = () => {
               value === "Standard" ? "300000157210003" : "399999999900003",
           },
         };
+        setShowGetQRButton(value === "Simplified");
+        fetchInvoiceID();
       }
 
       return updatedData;
@@ -355,31 +380,34 @@ const InvoiceForm = () => {
       });
     }, 0);
   };
+
   const addInvoiceLine = () => {
-    setFormData((prevFormData) => ({
-      ...prevFormData,
-      InvoiceLine: [
-        ...prevFormData.InvoiceLine,
-        {
-          ID: "",
-          InvoicedQuantity: { quantity: "" },
-          LineExtensionAmount: "",
-          TaxTotal: {
-            TaxAmount: "",
-            RoundingAmount: "",
-          },
-          Item: {
-            Name: "",
-            ClassifiedTaxCategory: {
-              ID: "",
-              Percent: "",
-              TaxScheme: { ID: "VAT" },
+    if (!isReadOnly) {
+      setFormData((prevFormData) => ({
+        ...prevFormData,
+        InvoiceLine: [
+          ...prevFormData.InvoiceLine,
+          {
+            ID: "",
+            InvoicedQuantity: { quantity: "" },
+            LineExtensionAmount: "",
+            TaxTotal: {
+              TaxAmount: "",
+              RoundingAmount: "",
             },
+            Item: {
+              Name: "",
+              ClassifiedTaxCategory: {
+                ID: "",
+                Percent: "",
+                TaxScheme: { ID: "VAT" },
+              },
+            },
+            Price: { PriceAmount: "" },
           },
-          Price: { PriceAmount: "" },
-        },
-      ],
-    }));
+        ],
+      }));
+    }
   };
   const handleInvoiceLineChange = (index, field, value) => {
     setFormData((prevFormData) => {
@@ -561,42 +589,115 @@ const InvoiceForm = () => {
       setClearanceStatus(
         selectedInvoice.clearanceStatus || selectedInvoice.reportingStatus
       );
-      if (
+      // Only set to read-only if the invoice is cleared or reported
+      setIsReadOnly(
         selectedInvoice.clearanceStatus === "CLEARED" ||
-        selectedInvoice.clearanceStatus === "REPORTED"
-      ) {
-        setIsReadOnly(true);
-      }
+          selectedInvoice.clearanceStatus === "REPORTED"
+      );
+      setIsEditing(true);
     }
   }, [selectedInvoice]);
   const handleSave = async () => {
     try {
+      const token = localStorage.getItem("token");
       if (
         !formData.IssueDate ||
         !formData.Delivery.ActualDeliveryDate ||
         !formData.PaymentMeans.PaymentMeansCode
       ) {
-        alert("Please fill in issuedate,Delivey,paymentcode fields.");
+        alert("Please fill in issue date, Delivery, and payment code fields.");
         return;
       }
-      //http://localhost:5000/invoice-form/save
-      const response = await axios.post(
-        `${BASE_URL}/invoice-form/save`,
-        formData
-      );
+
+      const url = `${BASE_URL}/invoice-form/save`;
+      const response = await axios.post(url, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
       console.log("Form data saved successfully:", response.data);
-      alert("Form saved successfully!");
+      alert("Form saved as draft successfully!");
     } catch (error) {
       console.error("Error saving form data:", error);
       alert("Error saving form. Please try again.");
     }
   };
-  // const formatDate = (dateString) => {
-  //   if (!dateString) return "N/A";
-  //   const date = new Date(dateString);
-  //   return isNaN(date.getTime()) ? dateString : format(date, "dd-MM-yyyy");
-  // };
 
+  const handleUpdate = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (
+        !formData.IssueDate ||
+        !formData.Delivery.ActualDeliveryDate ||
+        !formData.PaymentMeans.PaymentMeansCode
+      ) {
+        alert("Please fill in issue date, Delivery, and payment code fields.");
+        return;
+      }
+      const updatedFormData = {
+        ...formData,
+        UUID: formData.UUID || generateUUID(), // Ensure UUID is always set
+      };
+
+      const url = `${BASE_URL}/invoice-form/update/${formData.ID}`;
+      const response = await axios.put(url, updatedFormData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Form data updated successfully:", response.data);
+      alert("Form updated successfully!");
+    } catch (error) {
+      console.error("Error updating form data:", error);
+      alert("Error updating form. Please try again.");
+    }
+  };
+
+  const handleGetQR = async () => {
+    try {
+      if (!formData.AccountingSupplierParty.PartyIdentification.ID) {
+        alert("Please add and select an address before generating QR code.");
+        setIsAlertOpen(true);
+        return;
+      }
+
+      const data = {
+        formData: formData,
+        action: "getQR",
+      };
+      const token = localStorage.getItem("token");
+      const url = `${BASE_URL}/submit-simplified-form-data`;
+
+      const response = await axios.post(url, data, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Response from backend in the handle qr:", response.data);
+
+      const qrCodeUrl = response.data.qrCodeUrl;
+      setQRCodeUrl(qrCodeUrl);
+      setPdfData(response.data.pdf);
+      setShowPdfButton(true);
+      setClearanceStatus("PENDING_SUBMISSION");
+      setIsReadOnly(true);
+
+      alert("QR code and PDF generated successfully!");
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      alert("An error occurred while generating QR code and PDF");
+    }
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.AccountingSupplierParty.PartyIdentification.ID) {
@@ -617,6 +718,7 @@ const InvoiceForm = () => {
       }
       const data = {
         formData: formData,
+        action: "submit",
       };
       const token = localStorage.getItem("token");
       const url =
@@ -673,73 +775,7 @@ const InvoiceForm = () => {
       });
     }
   };
-  // const handleDownloadPDFAndXML = async () => {
-  //   const zip = new JSZip();
 
-  //   // Generate PDF
-  //   const pdfDoc = <InvoicePDF invoiceData={formData} qrCodeUrl={qrCodeUrl} />;
-  //   const pdfBlob = await pdf(pdfDoc).toBlob();
-
-  //   // Add PDF to zip
-  //   zip.file("invoice.pdf", pdfBlob);
-
-  //   // Add XML to zip
-  //   zip.file("invoice.xml", clearedInvoiceXml);
-
-  //   // Generate and download zip
-  //   const zipContent = await zip.generateAsync({ type: "blob" });
-  //   saveAs(zipContent, "invoice_package.zip");
-  // };
-  // const handleDownloadPDFAndXML = async () => {
-  //   // Render the PDF document
-  //   const pdfDoc = <InvoicePDF invoiceData={formData} qrCodeUrl={qrCodeUrl} />;
-  //   const pdfBlob = await pdf(pdfDoc).toBlob();
-  //   const pdfArrayBuffer = await pdfBlob.arrayBuffer();
-
-  //   // Create a new PDFDocument
-  //   const pdfA3Doc = await PDFDocument.create();
-
-  //   // Embed the font
-  //   const font = await pdfA3Doc.embedFont(StandardFonts.Helvetica);
-
-  //   // Add a blank page to the document
-  //   const page = pdfA3Doc.addPage([600, 400]);
-
-  //   // Draw some text on the page
-  //   page.drawText("This is a PDF/A-3 document with an attached XML file", {
-  //     x: 50,
-  //     y: 350,
-  //     size: 15,
-  //     font,
-  //   });
-
-  //   // Embed the generated PDF
-  //   const embeddedPdf = await PDFDocument.load(pdfArrayBuffer);
-  //   const [embeddedPage] = await pdfA3Doc.copyPages(embeddedPdf, [0]);
-  //   pdfA3Doc.addPage(embeddedPage);
-
-  //   // Example XML content (replace with actual XML content)
-  //   const xmlString = clearedInvoiceXml;
-  //   const xmlArrayBuffer = new TextEncoder().encode(xmlString);
-
-  //   // Attach the XML file to the PDF document
-  //   pdfA3Doc.attach(xmlArrayBuffer, {
-  //     name: "invoice.xml",
-  //     description: "Attached XML file",
-  //     mimeType: "text/xml",
-  //     creationDate: new Date(),
-  //     modificationDate: new Date(),
-  //   });
-
-  //   // Save the PDF document as a Uint8Array
-  //   const pdfBytes = await pdfA3Doc.save();
-
-  //   // Create a blob from the PDF bytes
-  //   const blob = new Blob([pdfBytes], { type: "application/pdf" });
-
-  //   // Save the PDF document to a file
-  //   saveAs(blob, "invoice.pdf");
-  // };
   const handleDownloadPDF = () => {
     if (pdfData) {
       // Convert base64 to blob
@@ -934,10 +970,14 @@ const InvoiceForm = () => {
                           ? "text-green-500"
                           : clearanceStatus === "REPORTED"
                           ? "text-blue-500"
+                          : clearanceStatus === "PENDING_SUBMISSION"
+                          ? "text-yellow-500"
                           : "text-gray-500"
                       }`}
                     >
-                      {clearanceStatus}
+                      {clearanceStatus === "PENDING_SUBMISSION"
+                        ? "Pending Submission"
+                        : clearanceStatus}
                     </p>
                     {qrCodeUrl && (
                       <img
@@ -1638,18 +1678,38 @@ const InvoiceForm = () => {
         <div className="col-span-4 flex justify-end">
           {!isReadOnly && (
             <>
+              {isEditing ? (
+                <button
+                  type="button"
+                  onClick={handleUpdate}
+                  className="px-4 py-2 text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 focus:outline-none mr-2"
+                >
+                  Update Draft
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 focus:outline-none mr-2"
+                >
+                  Save as Draft
+                </button>
+              )}
+              {showGetQRButton && (
+                <button
+                  type="button"
+                  onClick={handleGetQR}
+                  className="px-4 py-2 text-white bg-purple-500 rounded-lg hover:bg-purple-600 focus:outline-none mr-2"
+                >
+                  Get QR
+                </button>
+              )}
               <button
                 type="submit"
-                className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none mr-2"
+                onClick={handleSubmit}
+                className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none"
               >
-                Submit
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 focus:outline-none"
-              >
-                Save
+                Submit Invoice
               </button>
             </>
           )}

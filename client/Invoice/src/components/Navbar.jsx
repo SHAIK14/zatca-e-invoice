@@ -43,6 +43,9 @@ const Navbar = () => {
           <Link to="/addresses" className="text-gray-600 hover:text-gray-800">
             Manage Addresses
           </Link>
+          <Link to="/auto" className="text-gray-600 hover:text-gray-800">
+            Pending Invoices
+          </Link>
         </div>
         <button
           onClick={handleLogout}

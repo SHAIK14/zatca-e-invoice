@@ -9,8 +9,8 @@ const InvoiceSearchPage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [invoicesPerPage] = useState(10);
-  // const BASE_URL = `http://localhost:5000`;
-  const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  const BASE_URL = `http://localhost:5000`;
+  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
 
   const navigate = useNavigate();
   const fetchUserInvoices = useCallback(async () => {
@@ -44,7 +44,32 @@ const InvoiceSearchPage = () => {
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? "Invalid Date" : format(date, "dd-MM-yyyy");
   };
+  const handleDownloadPDF = async (invoice) => {
+    if (!invoice.pdfData) {
+      alert("PDF is not available for this invoice.");
+      return;
+    }
 
+    try {
+      // Convert base64 to Blob
+      const byteCharacters = atob(invoice.pdfData);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "application/pdf" });
+
+      // Create a link and trigger download
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `Invoice_${invoice.ID}.pdf`;
+      link.click();
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      alert("An error occurred while downloading the PDF.");
+    }
+  };
   const handleSearch = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -162,6 +187,7 @@ const InvoiceSearchPage = () => {
                 <th className="py-3 px-6 text-left">Tax Incl.</th>
                 <th className="py-3 px-6 text-left">Payable</th>
                 <th className="py-3 px-6 text-center">Actions</th>
+                <th className="py-3 px-6 text-center">Report</th>
               </tr>
             </thead>
             <tbody className="text-gray-600 text-sm font-light">
@@ -278,6 +304,29 @@ const InvoiceSearchPage = () => {
                         </button>
                       )}
                     </div>
+                  </td>
+                  <td className="py-3 px-6 text-center">
+                    <button
+                      onClick={() => handleDownloadPDF(invoice)}
+                      className="w-6 h-6 transform hover:text-blue-500 hover:scale-110"
+                      title={
+                        invoice.pdfData ? "Download PDF" : "PDF not available"
+                      }
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                    </button>
                   </td>
                 </tr>
               ))}

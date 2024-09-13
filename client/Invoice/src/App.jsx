@@ -6,6 +6,7 @@ import LoginForm from "./components/auth/LoginForm";
 import SignupForm from "./components/auth/SignupForm";
 import Navbar from "./components/Navbar";
 import AddressPage from "./components/AddressPage";
+import AutoSubmission from "./components/AutoSubmission";
 
 const App = () => {
   return (
@@ -57,6 +58,15 @@ const App = () => {
               <>
                 <Navbar />
                 <AddressPage />
+              </>
+            }
+          />
+          <Route
+            path="/auto"
+            element={
+              <>
+                <Navbar />
+                <AutoSubmission />
               </>
             }
           />

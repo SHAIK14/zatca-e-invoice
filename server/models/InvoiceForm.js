@@ -5,6 +5,7 @@ const InvoiceFormSchema = new mongoose.Schema({
   ProfileID: String,
   ID: String,
   UUID: String,
+  Mode: String,
   IssueDate: Date,
   IssueTime: String,
   InvoiceTypeCode: String,
@@ -105,6 +106,13 @@ const InvoiceFormSchema = new mongoose.Schema({
   clearanceInvoice: String,
   decodedClearanceInvoice: String,
   qrCode: String,
+  submissionStatus: {
+    type: String,
+    enum: ["PENDING_SUBMISSION", "SUBMITTED", "FAILED"],
+    default: "PENDING_SUBMISSION",
+  },
+  scheduledSubmissionTime: Date,
+  pdfData: String,
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

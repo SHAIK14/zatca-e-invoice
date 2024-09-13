@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 
 const generateXMLFile = async (formData) => {
+  console.log("invoice data in the utilfile:", formData);
   const {
     ProfileID,
     ID,
