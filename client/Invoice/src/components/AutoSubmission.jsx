@@ -4,7 +4,8 @@ import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const BASE_URL = `http://localhost:5000`;
+// const BASE_URL = `http://localhost:5000`;
+const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
 
 const AutoSubmission = () => {
   const [pendingInvoicesCount, setPendingInvoicesCount] = useState(0);
