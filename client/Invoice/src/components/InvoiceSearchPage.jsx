@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { FaPlus } from "react-icons/fa"; // Import the icon
 
 const InvoiceSearchPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -9,8 +10,8 @@ const InvoiceSearchPage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [invoicesPerPage] = useState(10);
-  // const BASE_URL = `http://localhost:5000`;
-  const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  const BASE_URL = `http://localhost:5000`;
+  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
 
   const navigate = useNavigate();
   const fetchUserInvoices = useCallback(async () => {
@@ -113,20 +114,20 @@ const InvoiceSearchPage = () => {
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen bg-gray-100 px-4 ">
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center">
+          <div className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-lg max-w-xl w-full">
             <input
               type="text"
               placeholder="Search by Invoice Line"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="border border-gray-300 rounded-l px-4 py-2 w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-transparent  rounded-lg px-4 py-2 w-full text-gray-700 bg-gray-100 placeholder-gray-400 focus:outline-none transition duration-300 ease-in-out"
             />
             <button
               onClick={handleSearch}
-              className="bg-blue-500 text-white rounded-r px-3 py-2 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-blue-800 text-white rounded-lg p-2 hover:bg-blue-800 focus:outline-none transition duration-300 ease-in-out"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -146,23 +147,15 @@ const InvoiceSearchPage = () => {
           </div>
           <Link
             to="/form"
-            className="bg-green-500 text-white rounded px-4 py-2 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center"
+            className="relative inline-flex items-center justify-center bg-green-500 text-white rounded-full w-10 h-10 group transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 hover:bg-green-500 hover:w-48" // This ensures the button expands
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-2"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            Create New Record
+            {/* Icon */}
+            <FaPlus className="text-xl text-white  group-hover:opacity-0 transition-opacity duration-300 ease-in-out" />
+
+            {/* Text that appears on hover */}
+            <span className="absolute left-0 opacity-0 group-hover:opacity-100 group-hover:left-10 transition-all duration-300 ease-in-out text-sm font-medium">
+              Create New Form
+            </span>
           </Link>
         </div>
         {errorMessage && (
@@ -170,11 +163,11 @@ const InvoiceSearchPage = () => {
             <p className="text-red-500">{errorMessage}</p>
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="table-auto w-full bg-white shadow-md rounded-lg">
+        <div className="shadow-lg rounded-2xl overflow-hidden bg-white ">
+          <table className="table-auto w-full bg-white ">
             <thead>
-              <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-                <th className="py-3 px-6 text-left">Status</th>
+              <tr className="bg-blue-800 text-white  uppercase text-[0.7rem] leading-normal">
+                <th className="py-3 px-6 text-left ">Status</th>
                 <th className="py-3 px-6 text-left">ID</th>
                 <th className="py-3 px-6 text-left">UUID</th>
                 <th className="py-3 px-6 text-left">Date</th>
@@ -190,50 +183,58 @@ const InvoiceSearchPage = () => {
                 <th className="py-3 px-6 text-center">Report</th>
               </tr>
             </thead>
-            <tbody className="text-gray-600 text-sm font-light">
+            <tbody className="text-gray-600 text-[0.7rem] font-light">
               {currentInvoices.map((invoice) => (
                 <tr
                   key={invoice._id}
                   className="border-b border-gray-200 hover:bg-gray-100"
                 >
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td
+                    className={`py-3 px-6 text-left font-bold ${
+                      invoice.clearanceStatus === "CLEARED"
+                        ? "text-green-500"
+                        : invoice.clearanceStatus === "REPORTED"
+                        ? "text-orange-500"
+                        : "text-blue-950"
+                    }`}
+                  >
                     {invoice.clearanceStatus}
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800 whitespace-nowrap">
+                  <td className="py-3 px-6 text-left text-blue-950 whitespace-nowrap">
                     {invoice.ID}
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {invoice.UUID}
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {formatDate(invoice.IssueDate)}
                   </td>
 
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {invoice.DocumentCurrencyCode}
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {invoice.TaxTotal[0]?.TaxAmount}
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {invoice.TaxTotal[0]?.TaxSubtotal?.TaxableAmount}
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {invoice.TaxTotal[0]?.TaxSubtotal?.TaxCategory?.ID}
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {
                       invoice.TaxTotal[0]?.TaxSubtotal?.TaxCategory?.TaxScheme
                         ?.ID
                     }
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {invoice.LegalMonetaryTotal?.LineExtensionAmount}
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {invoice.LegalMonetaryTotal?.TaxInclusiveAmount}
                   </td>
-                  <td className="py-3 px-6 text-left text-gray-800">
+                  <td className="py-3 px-6 text-left text-blue-950">
                     {invoice.LegalMonetaryTotal?.PayableAmount}
                   </td>
                   <td className="py-3 px-6 text-center">
@@ -241,7 +242,7 @@ const InvoiceSearchPage = () => {
                       {invoice.clearanceStatus === undefined ? (
                         <button
                           onClick={() => handleEdit(invoice)}
-                          className="w-4 mr-2 transform hover:text-purple-500 hover:scale-110"
+                          className="w-4 mr-2 transform hover:text-blue-950 hover:scale-110"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -261,7 +262,7 @@ const InvoiceSearchPage = () => {
                         invoice.clearanceStatus === "REPORTED" ? (
                         <button
                           onClick={() => handleView(invoice)}
-                          className="w-4 mr-2 transform hover:text-purple-500 hover:scale-110"
+                          className="w-4 mr-2 transform hover:text-blue-950 hover:scale-110"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -286,7 +287,7 @@ const InvoiceSearchPage = () => {
                       ) : (
                         <button
                           onClick={() => handleEdit(invoice)}
-                          className="w-4 mr-2 transform hover:text-purple-500 hover:scale-110"
+                          className="w-4 mr-2 transform hover:text-blue-950 hover:scale-110"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -344,9 +345,9 @@ const InvoiceSearchPage = () => {
                       onClick={() => paginate(index + 1)}
                       className={`${
                         currentPage === index + 1
-                          ? "text-black font-bold"
+                          ? "text-white font-bold bg-blue-800  "
                           : "text-gray-500"
-                      } px-4 py-2 mx-1 rounded-md hover:text-black hover:bg-gray-200 focus:outline-none`}
+                      } px-4 py-2 mx-1 rounded-full hover:text-blue-950 hover:bg-gray-200 focus:outline-none`}
                     >
                       {index + 1}
                     </button>
