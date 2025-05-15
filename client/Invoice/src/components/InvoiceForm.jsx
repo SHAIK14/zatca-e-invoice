@@ -130,9 +130,10 @@ const InvoiceForm = () => {
   const [clearedInvoiceXml, setClearedInvoiceXml] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showGetQRButton, setShowGetQRButton] = useState(false);
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  const BASE_URL = `http://localhost:5000`;
-  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  // const BASE_URL = `http://localhost:8000`;
+ 
 
   const fetchUserAddress = useCallback(async () => {
     try {

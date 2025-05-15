@@ -36,7 +36,9 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
+    // Remove token from localStorage
     localStorage.removeItem("token");
+    // Navigate to login page
     navigate("/login");
   };
 
@@ -51,16 +53,32 @@ const Navbar = () => {
               viewBox="0 0 120 30"
               className="h-8"
             >
-              <text x="0" y="20" fontSize="20" fontWeight="bold" fill="#8c6e5d">
+              {/* Purple gradient background for logo */}
+              <defs>
+                <linearGradient id="purpleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#9333ea" />
+                  <stop offset="100%" stopColor="#7e22ce" />
+                </linearGradient>
+              </defs>
+              <rect x="0" y="0" width="100%" height="100%" rx="8" fill="url(#purpleGradient)" opacity="0.1" />
+              <text 
+                x="10" 
+                y="20" 
+                fontSize="20" 
+                fontWeight="bold" 
+                fill="#7e22ce"
+                className="drop-shadow-sm"
+              >
                 Zatca
               </text>
               <text
-                x="100"
+                x="110"
                 y="20"
                 fontSize="20"
                 fontWeight="bold"
                 textAnchor="end"
-                fill="#8c6e5d"
+                fill="#7e22ce"
+                className="drop-shadow-sm"
               >
                 زاتكا
               </text>
@@ -135,8 +153,9 @@ const Navbar = () => {
 
         {/* Logout Button */}
         <button
-          onClick={() => console.log("Logout")}
+          onClick={handleLogout}
           className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-red-500 text-gray-800 hover:text-white transition-all duration-300 shadow-md focus:outline-none"
+          title="Logout"
         >
           <FiLogOut className="w-4 h-4" />
         </button>

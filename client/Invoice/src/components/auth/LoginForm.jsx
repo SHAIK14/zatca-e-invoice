@@ -10,8 +10,9 @@ const LoginForm = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const BASE_URL = `http://localhost:5000`;
-  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  // const BASE_URL = `http://localhost:8000`;
+
 
   const [activeTab, setActiveTab] = useState("login");
 

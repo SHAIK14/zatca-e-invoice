@@ -119,5 +119,9 @@ const InvoiceFormSchema = new mongoose.Schema({
     required: true,
   },
 });
+// Add this to your InvoiceForm model file or run in MongoDB
+InvoiceFormSchema.index({ user: 1, IssueDate: -1 });
+InvoiceFormSchema.index({ user: 1, clearanceStatus: 1 });
+InvoiceFormSchema.index({ user: 1, ID: 1 });
 
 module.exports = mongoose.model("InvoiceForm", InvoiceFormSchema);

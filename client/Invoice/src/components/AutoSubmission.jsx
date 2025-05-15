@@ -4,8 +4,10 @@ import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const BASE_URL = `http://localhost:5000`;
-// const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// const BASE_URL = `http://localhost:8000`;
+
 
 const AutoSubmission = () => {
   const [pendingInvoicesCount, setPendingInvoicesCount] = useState(0);
@@ -165,53 +167,75 @@ const AutoSubmission = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-4xl font-extrabold text-gray-900 text-center mb-10">
-          Auto Submission Dashboard
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-medium text-indigo-900 mb-1">
+            Invoice Submission
+          </h1>
+          <p className="text-indigo-600 font-light">
+            Manage your automatic and manual invoice submissions
+          </p>
+        </div>
 
-        <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-8">
-          <div className="px-6 py-8">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-              Pending Invoices
-            </h2>
-            <p className="text-3xl font-bold text-indigo-600">
-              {pendingInvoicesCount}
-            </p>
-            <p className="text-gray-600">
-              {pendingInvoicesCount === 0
-                ? "No pending invoices"
-                : pendingInvoicesCount === 1
-                ? "1 invoice awaiting submission"
-                : `${pendingInvoicesCount} invoices awaiting submission`}
-            </p>
+        {/* Status Card */}
+        <div className="bg-white backdrop-filter backdrop-blur-lg bg-opacity-80 rounded-xl shadow-sm overflow-hidden border border-indigo-100 mb-8">
+          <div className="p-6">
+            <div>
+              <h2 className="text-base font-medium text-gray-800 mb-2">
+                Pending Invoices
+              </h2>
+              <div className="flex items-center">
+                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-indigo-50 border border-indigo-100">
+                  <span className="text-lg font-medium text-indigo-600">
+                    {pendingInvoicesCount}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 ml-3">
+                  {pendingInvoicesCount === 0
+                    ? "All invoices are submitted"
+                    : pendingInvoicesCount === 1
+                    ? "1 invoice awaiting submission"
+                    : `${pendingInvoicesCount} invoices awaiting submission`}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* Main Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-            <div className="px-6 py-8">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-                Automatic Submission
-              </h2>
+          {/* Automatic Submission Card */}
+          <div className="bg-white backdrop-filter backdrop-blur-lg bg-opacity-80 rounded-xl shadow-sm overflow-hidden border border-indigo-100 transition-all duration-300 hover:border-indigo-200">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <h2 className="text-base font-medium text-gray-800">
+                  Automatic Submission
+                </h2>
+              </div>
+              
               {autoSchedule && autoSchedule.isActive ? (
-                <>
-                  <p className="text-gray-600 mb-4">
-                    Scheduled for{" "}
-                    {formatTime(autoSchedule.hour, autoSchedule.minute)} daily
-                  </p>
+                <div className="space-y-4">
+                  <div className="flex items-center px-4 py-3 bg-blue-50 rounded-xl">
+                    <svg className="w-5 h-5 text-blue-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-blue-700">
+                      Scheduled for{" "}
+                      <span className="font-semibold">{formatTime(autoSchedule.hour, autoSchedule.minute)}</span> daily
+                    </p>
+                  </div>
                   <button
                     onClick={handleStopAutoSchedule}
-                    className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
+                    className="w-full bg-white text-red-600 border border-red-200 font-medium py-2.5 px-4 rounded-lg hover:bg-red-50 transition duration-200 ease-in-out focus:outline-none"
                   >
                     Stop Auto Submission
                   </button>
-                </>
+                </div>
               ) : (
                 <button
                   onClick={handleAutoSchedule}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
+                  className="w-full bg-white text-blue-600 border border-blue-200 font-medium py-2.5 px-4 rounded-lg hover:bg-blue-50 transition duration-200 ease-in-out focus:outline-none"
                 >
                   Schedule for Midnight
                 </button>
@@ -219,14 +243,17 @@ const AutoSubmission = () => {
             </div>
           </div>
 
-          <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-            <div className="px-6 py-8">
-              <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-                Manual Submission
-              </h2>
+          {/* Manual Submission Card */}
+          <div className="bg-white backdrop-filter backdrop-blur-lg bg-opacity-80 rounded-xl shadow-sm overflow-hidden border border-indigo-100 transition-all duration-300 hover:border-indigo-200">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <h2 className="text-base font-medium text-gray-800">
+                  Manual Submission
+                </h2>
+              </div>
               <button
                 onClick={handleManualSubmit}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
+                className="w-full bg-white text-green-600 border border-green-200 font-medium py-2.5 px-4 rounded-lg hover:bg-green-50 transition duration-200 ease-in-out focus:outline-none"
               >
                 Submit Now
               </button>
@@ -234,53 +261,43 @@ const AutoSubmission = () => {
           </div>
         </div>
 
-        <div className="bg-white shadow-lg rounded-lg overflow-hidden mb-8">
-          <div className="px-6 py-8">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-              Schedule Manual Submission
-            </h2>
+        {/* Schedule Manual Submission Card */}
+        <div className="bg-white backdrop-filter backdrop-blur-lg bg-opacity-80 rounded-xl shadow-sm overflow-hidden border border-indigo-100 transition-all duration-300 hover:border-indigo-200 mb-8">
+          <div className="p-6">
+            <div className="flex items-center mb-5">
+              <h2 className="text-base font-medium text-gray-800">
+                Schedule Manual Submission
+              </h2>
+            </div>
+            
             {manualSchedule && manualSchedule.isActive ? (
-              <>
-                <p className="text-gray-600 mb-4">
-                  Scheduled for{" "}
-                  {formatTime(manualSchedule.hour, manualSchedule.minute)}
-                </p>
+              <div className="space-y-4">
+                <div className="flex items-center px-3 py-2 bg-purple-50 rounded-lg mb-3">
+                  <p className="text-sm text-purple-700">
+                    Scheduled for{" "}
+                    <span className="font-medium">{formatTime(manualSchedule.hour, manualSchedule.minute)}</span>
+                  </p>
+                </div>
                 <button
                   onClick={handleStopManualSchedule}
-                  className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1"
+                  className="w-full bg-white text-red-600 border border-red-200 font-medium py-2.5 px-4 rounded-lg hover:bg-red-50 transition duration-200 ease-in-out focus:outline-none"
                 >
                   Stop Scheduled Submission
                 </button>
-              </>
+              </div>
             ) : (
-              <div className="flex items-center space-x-4">
-                <div className="relative flex-grow">
+              <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
+                <div className="relative flex-grow w-full md:w-auto">
                   <input
                     type="time"
                     value={manualTime}
                     onChange={handleManualTimeChange}
-                    className="w-full px-4 py-2 pr-8 text-gray-700 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-purple-300 transition duration-200"
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <svg
-                      className="w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
                 </div>
                 <button
                   onClick={scheduleManualSubmission}
-                  className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                  className="bg-white text-purple-600 border border-purple-200 font-medium py-2.5 px-6 rounded-lg hover:bg-purple-50 transition duration-200 ease-in-out focus:outline-none w-full md:w-auto"
                 >
                   Schedule
                 </button>
@@ -289,7 +306,19 @@ const AutoSubmission = () => {
           </div>
         </div>
 
-        <ToastContainer position="top-right" autoClose={5000} />
+        {/* Toast Container */}
+        <ToastContainer 
+          position="top-right" 
+          autoClose={5000} 
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          style={{ zIndex: 9999 }}
+        />
       </div>
     </div>
   );

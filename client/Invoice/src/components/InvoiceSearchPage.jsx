@@ -2,58 +2,169 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { FaPlus } from "react-icons/fa"; // Import the icon
+import { FaPlus, FaSearch, FaEye, FaEdit, FaFileDownload } from "react-icons/fa";
 
 const InvoiceSearchPage = () => {
+  // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [invoiceData, setInvoiceData] = useState([]);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [invoicesPerPage] = useState(10);
-  const BASE_URL = `http://localhost:5000`;
-  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  });
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [sortConfig, setSortConfig] = useState({
+    field: "IssueDate",
+    order: "desc",
+  });
 
   const navigate = useNavigate();
-  const fetchUserInvoices = useCallback(async () => {
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+  // const BASE_URL = `http://localhost:8000`;
+
+
+  // Fetch invoices with pagination, sorting, and filtering
+  const fetchInvoices = useCallback(async () => {
     try {
+      setLoading(true);
+      setError("");
+
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit,
+        sortField: sortConfig.field,
+        sortOrder: sortConfig.order,
+      };
+
+      // Add search term if present
+      if (searchTerm) {
+        params.invoiceLine = searchTerm;
+      }
+
+      // Add status filter if not "all"
+      if (activeFilter !== "all") {
+        params.status = activeFilter.toUpperCase();
+      }
+
       const token = localStorage.getItem("token");
       const response = await axios.get(`${BASE_URL}/invoice-form/search`, {
+        params,
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      const data = response.data;
 
-      setInvoiceData(data);
-      setErrorMessage("");
-    } catch (error) {
-      console.error("Error fetching user invoices:", error);
-      if (error.response && error.response.status === 404) {
-        setErrorMessage("You don't have any invoices. Please create one.");
+      // Handle both old and new API response formats
+      if (Array.isArray(response.data)) {
+        // Old API response format
+        setInvoices(response.data);
+        setPagination({
+          ...pagination,
+          total: response.data.length,
+          totalPages: Math.ceil(response.data.length / pagination.limit),
+        });
+      } else if (response.data.invoices) {
+        // New API response format with pagination
+        setInvoices(response.data.invoices);
+        setPagination({
+          ...pagination,
+          total: response.data.pagination.total,
+          totalPages: response.data.pagination.totalPages,
+        });
       } else {
-        setErrorMessage("An error occurred while fetching invoices.");
+        setInvoices([]);
+        setError("Unexpected response format from server");
       }
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      if (error.response?.status === 404) {
+        setInvoices([]);
+        setError("No invoices found. Create a new invoice to get started.");
+      } else {
+        setError("Failed to load invoices. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
-  }, [BASE_URL]); // BASE_URL is included in the dependency array
+  }, [pagination.page, pagination.limit, sortConfig, searchTerm, activeFilter, BASE_URL]);
 
+  // Initial fetch on component mount
   useEffect(() => {
-    fetchUserInvoices();
-  }, [fetchUserInvoices]);
+    fetchInvoices();
+  }, [fetchInvoices]);
 
+  // Search handler with debounce
+  const handleSearch = useCallback((e) => {
+    setSearchTerm(e.target.value);
+    // Reset to first page when searching
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, []);
+
+  // Full invoice fetch for view/edit
+  const fetchFullInvoice = async (invoiceId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${BASE_URL}/invoice-form/${invoiceId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching full invoice:", error);
+      throw error;
+    }
+  };
+
+  // Format date helper
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? "Invalid Date" : format(date, "dd-MM-yyyy");
+    return isNaN(date.getTime()) ? "Invalid Date" : format(date, "dd/MM/yyyy");
   };
-  const handleDownloadPDF = async (invoice) => {
-    if (!invoice.pdfData) {
-      alert("PDF is not available for this invoice.");
-      return;
-    }
 
+  // Action handlers
+  const handleEdit = async (invoice) => {
     try {
+      // For edit, we need the full invoice data
+      const fullInvoice = await fetchFullInvoice(invoice.ID);
+      navigate(`/form/${invoice.ID}`, { state: { invoice: fullInvoice } });
+    } catch (error) {
+      alert("Failed to load invoice details for editing");
+    }
+  };
+
+  const handleView = async (invoice) => {
+    try {
+      // For view, we need the full invoice data
+      const fullInvoice = await fetchFullInvoice(invoice.ID);
+      navigate(`/form/${invoice.ID}`, { state: { invoice: fullInvoice } });
+    } catch (error) {
+      alert("Failed to load invoice details for viewing");
+    }
+  };
+
+  const handleDownloadPDF = async (invoice) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${BASE_URL}/invoice-form/${invoice.ID}/pdf`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.data.pdfData) {
+        alert("PDF is not available for this invoice.");
+        return;
+      }
+
       // Convert base64 to Blob
-      const byteCharacters = atob(invoice.pdfData);
+      const byteCharacters = atob(response.data.pdfData);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -71,292 +182,370 @@ const InvoiceSearchPage = () => {
       alert("An error occurred while downloading the PDF.");
     }
   };
-  const handleSearch = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(
-        `${BASE_URL}/invoice-form/search?invoiceLine=${searchTerm}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+
+  // Manual search button handler
+  const handleSearchButton = () => {
+    setPagination(prev => ({ ...prev, page: 1 })); // Reset to page 1
+    fetchInvoices();
+  };
+
+  // Sort handler
+  const handleSort = (field) => {
+    setSortConfig((prevConfig) => ({
+      field,
+      order: prevConfig.field === field && prevConfig.order === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  // Filter handler
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  // Pagination handlers
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({ ...prev, page: newPage }));
+  };
+
+  // Calculate pagination numbers
+  const getPageNumbers = () => {
+    const { page, totalPages } = pagination;
+    const pageNumbers = [];
+    
+    // Logic to show a reasonable number of page buttons
+    if (totalPages <= 7) {
+      // If 7 or fewer pages, show all pages
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always include first and last page
+      if (page <= 3) {
+        // If current page is near the beginning
+        for (let i = 1; i <= 5; i++) {
+          pageNumbers.push(i);
         }
-      );
-      const data = response.data;
-      setInvoiceData(data);
-      setErrorMessage("");
-    } catch (error) {
-      console.error("Error fetching invoice data:", error);
-      if (error.response && error.response.status === 404) {
-        setErrorMessage("No invoices found for the entered invoice line.");
+        pageNumbers.push(null); // Ellipsis
+        pageNumbers.push(totalPages);
+      } else if (page >= totalPages - 2) {
+        // If current page is near the end
+        pageNumbers.push(1);
+        pageNumbers.push(null); // Ellipsis
+        for (let i = totalPages - 4; i <= totalPages; i++) {
+          pageNumbers.push(i);
+        }
       } else {
-        setErrorMessage("An error occurred while searching for invoices.");
+        // If current page is in the middle
+        pageNumbers.push(1);
+        pageNumbers.push(null); // Ellipsis
+        for (let i = page - 1; i <= page + 1; i++) {
+          pageNumbers.push(i);
+        }
+        pageNumbers.push(null); // Ellipsis
+        pageNumbers.push(totalPages);
       }
     }
+    
+    return pageNumbers;
   };
 
-  const handleEdit = (invoice) => {
-    navigate(`/form/${invoice.ID}`, { state: { invoice } });
+  // Render page controls
+  const renderPagination = () => {
+    const pageNumbers = getPageNumbers();
+
+    return (
+      <div className="flex items-center justify-center mt-6 space-x-2">
+        <button
+          onClick={() => handlePageChange(pagination.page - 1)}
+          disabled={pagination.page === 1}
+          className="px-3 py-1 text-indigo-600 bg-white rounded-lg border border-indigo-200 hover:bg-indigo-50 disabled:opacity-40 disabled:hover:bg-white"
+        >
+          &laquo;
+        </button>
+        
+        {pageNumbers.map((number, index) => (
+          number === null ? (
+            <span key={`ellipsis-${index}`} className="text-gray-500">...</span>
+          ) : (
+            <button
+              key={number}
+              onClick={() => handlePageChange(number)}
+              className={`px-3 py-1 rounded-lg ${
+                pagination.page === number
+                  ? "bg-indigo-600 text-white"
+                  : "text-indigo-600 bg-white border border-indigo-200 hover:bg-indigo-50"
+              }`}
+            >
+              {number}
+            </button>
+          )
+        ))}
+        
+        <button
+          onClick={() => handlePageChange(pagination.page + 1)}
+          disabled={pagination.page === pagination.totalPages}
+          className="px-3 py-1 text-indigo-600 bg-white rounded-lg border border-indigo-200 hover:bg-indigo-50 disabled:opacity-40 disabled:hover:bg-white"
+        >
+          &raquo;
+        </button>
+      </div>
+    );
   };
 
-  const handleView = (invoice) => {
-    navigate(`/form/${invoice.ID}`, { state: { invoice } });
-  };
-
-  // Pagination logic
-  const indexOfLastInvoice = currentPage * invoicesPerPage;
-  const indexOfFirstInvoice = indexOfLastInvoice - invoicesPerPage;
-  const currentInvoices = invoiceData.slice(
-    indexOfFirstInvoice,
-    indexOfLastInvoice
+  // Render loading skeleton
+  const renderSkeleton = () => (
+    <div className="animate-pulse">
+      {[...Array(5)].map((_, index) => (
+        <div key={index} className="border-b border-gray-100 py-3">
+          <div className="h-5 bg-gray-200 rounded w-1/4 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        </div>
+      ))}
+    </div>
   );
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
   return (
-    <div className="min-h-screen bg-gray-100 px-4 ">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-lg max-w-xl w-full">
-            <input
-              type="text"
-              placeholder="Search by Invoice Line"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="border border-transparent  rounded-lg px-4 py-2 w-full text-gray-700 bg-gray-100 placeholder-gray-400 focus:outline-none transition duration-300 ease-in-out"
-            />
-            <button
-              onClick={handleSearch}
-              className="bg-blue-800 text-white rounded-lg p-2 hover:bg-blue-800 focus:outline-none transition duration-300 ease-in-out"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </button>
-          </div>
-          <Link
-            to="/form"
-            className="relative inline-flex items-center justify-center bg-green-500 text-white rounded-full w-10 h-10 group transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 hover:bg-green-500 hover:w-48" // This ensures the button expands
-          >
-            {/* Icon */}
-            <FaPlus className="text-xl text-white  group-hover:opacity-0 transition-opacity duration-300 ease-in-out" />
-
-            {/* Text that appears on hover */}
-            <span className="absolute left-0 opacity-0 group-hover:opacity-100 group-hover:left-10 transition-all duration-300 ease-in-out text-sm font-medium">
-              Create New Form
-            </span>
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-medium text-indigo-900 mb-1">
+            Invoice Management
+          </h1>
+          <p className="text-indigo-600 font-light">
+            Search, view and manage your invoices
+          </p>
         </div>
-        {errorMessage && (
-          <div className="text-center py-8">
-            <p className="text-red-500">{errorMessage}</p>
+
+        {/* Search and Actions */}
+     {/* Search and Actions */}
+<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+  <div className="flex w-full sm:w-auto flex-grow max-w-lg">
+    <div className="relative flex-grow">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <FaSearch className="h-4 w-4 text-gray-400" />
+      </div>
+      <input
+        type="text"
+        placeholder="Search by Invoice ID"
+        value={searchTerm}
+        onChange={handleSearch}
+        className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-indigo-300 transition duration-200"
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') {
+            handleSearchButton();
+          }
+        }}
+      />
+    </div>
+    <button
+      onClick={handleSearchButton}
+      className="ml-2 bg-white text-indigo-600 border border-indigo-200 px-4 py-2.5 rounded-lg hover:bg-indigo-50 transition duration-200 focus:outline-none"
+    >
+      Search
+    </button>
+  </div>
+
+  <Link
+    to="/form"
+    className="group flex items-center justify-center bg-white text-indigo-600 border border-indigo-200 px-4 py-2.5 rounded-lg hover:bg-indigo-50 transition duration-200 focus:outline-none w-full sm:w-auto"
+  >
+    <FaPlus className="mr-2 h-3.5 w-3.5" />
+    <span>New Invoice</span>
+  </Link>
+</div>
+
+        {/* Filter tabs */}
+        <div className="flex mb-6 border-b border-gray-200">
+          <button
+            onClick={() => handleFilterChange("all")}
+            className={`px-4 py-2 text-sm font-medium ${
+              activeFilter === "all"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-500 hover:text-indigo-600"
+            }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => handleFilterChange("cleared")}
+            className={`px-4 py-2 text-sm font-medium ${
+              activeFilter === "cleared"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-500 hover:text-indigo-600"
+            }`}
+          >
+            Cleared
+          </button>
+          <button
+            onClick={() => handleFilterChange("reported")}
+            className={`px-4 py-2 text-sm font-medium ${
+              activeFilter === "reported"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-500 hover:text-indigo-600"
+            }`}
+          >
+            Reported
+          </button>
+          <button
+            onClick={() => handleFilterChange("pending")}
+            className={`px-4 py-2 text-sm font-medium ${
+              activeFilter === "pending"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-500 hover:text-indigo-600"
+            }`}
+          >
+            Pending
+          </button>
+        </div>
+
+        {/* Error message */}
+        {error && (
+          <div className="bg-white bg-opacity-80 backdrop-filter backdrop-blur-lg rounded-xl shadow-sm p-4 border border-red-100 mb-6">
+            <p className="text-red-500 text-center">{error}</p>
           </div>
         )}
-        <div className="shadow-lg rounded-2xl overflow-hidden bg-white ">
-          <table className="table-auto w-full bg-white ">
-            <thead>
-              <tr className="bg-blue-800 text-white  uppercase text-[0.7rem] leading-normal">
-                <th className="py-3 px-6 text-left ">Status</th>
-                <th className="py-3 px-6 text-left">ID</th>
-                <th className="py-3 px-6 text-left">UUID</th>
-                <th className="py-3 px-6 text-left">Date</th>
-                <th className="py-3 px-6 text-left">Curr. Code</th>
-                <th className="py-3 px-6 text-left">Tax Amt.</th>
-                <th className="py-3 px-6 text-left">Taxable Amt.</th>
-                <th className="py-3 px-6 text-left">Tax ID</th>
-                <th className="py-3 px-6 text-left">Tax Scheme ID</th>
-                <th className="py-3 px-6 text-left">Line Ext.</th>
-                <th className="py-3 px-6 text-left">Tax Incl.</th>
-                <th className="py-3 px-6 text-left">Payable</th>
-                <th className="py-3 px-6 text-center">Actions</th>
-                <th className="py-3 px-6 text-center">Report</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-600 text-[0.7rem] font-light">
-              {currentInvoices.map((invoice) => (
-                <tr
-                  key={invoice._id}
-                  className="border-b border-gray-200 hover:bg-gray-100"
-                >
-                  <td
-                    className={`py-3 px-6 text-left font-bold ${
-                      invoice.clearanceStatus === "CLEARED"
-                        ? "text-green-500"
-                        : invoice.clearanceStatus === "REPORTED"
-                        ? "text-orange-500"
-                        : "text-blue-950"
-                    }`}
-                  >
-                    {invoice.clearanceStatus}
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950 whitespace-nowrap">
-                    {invoice.ID}
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {invoice.UUID}
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {formatDate(invoice.IssueDate)}
-                  </td>
 
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {invoice.DocumentCurrencyCode}
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {invoice.TaxTotal[0]?.TaxAmount}
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {invoice.TaxTotal[0]?.TaxSubtotal?.TaxableAmount}
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {invoice.TaxTotal[0]?.TaxSubtotal?.TaxCategory?.ID}
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {
-                      invoice.TaxTotal[0]?.TaxSubtotal?.TaxCategory?.TaxScheme
-                        ?.ID
-                    }
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {invoice.LegalMonetaryTotal?.LineExtensionAmount}
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {invoice.LegalMonetaryTotal?.TaxInclusiveAmount}
-                  </td>
-                  <td className="py-3 px-6 text-left text-blue-950">
-                    {invoice.LegalMonetaryTotal?.PayableAmount}
-                  </td>
-                  <td className="py-3 px-6 text-center">
-                    <div className="flex item-center justify-center">
-                      {invoice.clearanceStatus === undefined ? (
-                        <button
-                          onClick={() => handleEdit(invoice)}
-                          className="w-4 mr-2 transform hover:text-blue-950 hover:scale-110"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                            />
-                          </svg>
-                        </button>
-                      ) : invoice.clearanceStatus === "CLEARED" ||
-                        invoice.clearanceStatus === "REPORTED" ? (
-                        <button
-                          onClick={() => handleView(invoice)}
-                          className="w-4 mr-2 transform hover:text-blue-950 hover:scale-110"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleEdit(invoice)}
-                          className="w-4 mr-2 transform hover:text-blue-950 hover:scale-110"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 px-6 text-center">
-                    <button
-                      onClick={() => handleDownloadPDF(invoice)}
-                      className="w-6 h-6 transform hover:text-blue-500 hover:scale-110"
-                      title={
-                        invoice.pdfData ? "Download PDF" : "PDF not available"
-                      }
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                    </button>
-                  </td>
+        {/* Invoices table */}
+        <div className="bg-white bg-opacity-80 backdrop-filter backdrop-blur-lg rounded-xl shadow-sm overflow-hidden border border-indigo-100">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr className="bg-indigo-50">
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer"
+                    onClick={() => handleSort("clearanceStatus")}
+                  >
+                    Status
+                    {sortConfig.field === "clearanceStatus" && (
+                      <span className="ml-1">
+                        {sortConfig.order === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer"
+                    onClick={() => handleSort("ID")}
+                  >
+                    ID
+                    {sortConfig.field === "ID" && (
+                      <span className="ml-1">
+                        {sortConfig.order === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer"
+                    onClick={() => handleSort("IssueDate")}
+                  >
+                    Date
+                    {sortConfig.field === "IssueDate" && (
+                      <span className="ml-1">
+                        {sortConfig.order === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                  >
+                    Amount
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase"
+                  >
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex justify-center mt-8">
-          <nav>
-            <ul className="flex">
-              {Array.from(
-                { length: Math.ceil(invoiceData.length / invoicesPerPage) },
-                (_, index) => (
-                  <li key={index}>
-                    <button
-                      onClick={() => paginate(index + 1)}
-                      className={`${
-                        currentPage === index + 1
-                          ? "text-white font-bold bg-blue-800  "
-                          : "text-gray-500"
-                      } px-4 py-2 mx-1 rounded-full hover:text-blue-950 hover:bg-gray-200 focus:outline-none`}
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {loading ? (
+                  renderSkeleton()
+                ) : invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                      No invoices found. Create a new invoice to get started.
+                    </td>
+                  </tr>
+                ) : (
+                  invoices.map((invoice) => (
+                    <tr
+                      key={invoice._id || invoice.ID}
+                      className="hover:bg-indigo-50 transition-colors duration-150"
                     >
-                      {index + 1}
-                    </button>
-                  </li>
-                )
-              )}
-            </ul>
-          </nav>
+                      <td className="px-4 py-3 text-sm">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                            invoice.clearanceStatus === "CLEARED"
+                              ? "bg-green-100 text-green-800"
+                              : invoice.clearanceStatus === "REPORTED"
+                              ? "bg-orange-100 text-orange-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {invoice.clearanceStatus?.toLowerCase() || "pending"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        {invoice.ID}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {formatDate(invoice.IssueDate)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {invoice.LegalMonetaryTotal?.PayableAmount?.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right space-x-2">
+                        {invoice.clearanceStatus === "CLEARED" ||
+                        invoice.clearanceStatus === "REPORTED" ? (
+                          <button
+                            onClick={() => handleView(invoice)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                            title="View Invoice"
+                          >
+                            <FaEye className="inline-block w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleEdit(invoice)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                            title="Edit Invoice"
+                          >
+                            <FaEdit className="inline-block w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDownloadPDF(invoice)}
+                          className="text-indigo-600 hover:text-indigo-900 ml-3"
+                          title="Download PDF"
+                        >
+                          <FaFileDownload className="inline-block w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        {/* Pagination */}
+        {!loading && invoices.length > 0 && renderPagination()}
+
+        {/* Page info */}
+        {!loading && invoices.length > 0 && (
+          <div className="mt-4 text-center text-sm text-gray-500">
+            Showing {Math.min(invoices.length, 1) + (pagination.page - 1) * pagination.limit} to{" "}
+            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+            {pagination.total} invoices
+          </div>
+        )}
       </div>
     </div>
   );
