@@ -1,6 +1,6 @@
 // src/components/auth/SignupForm.jsx
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Input } from "@nextui-org/react";
 import Waves from "../Resuable-Comp/Waves";

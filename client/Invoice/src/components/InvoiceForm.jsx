@@ -700,6 +700,40 @@ const InvoiceForm = () => {
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const invalidLines = formData.InvoiceLine.filter((line) => {
+      return (
+        !line.LineType ||
+        !line.Item.ClassifiedTaxCategory.Percent ||
+        !line.Item.Name ||
+        !line.Price.PriceAmount ||
+        !line.InvoicedQuantity.quantity
+      );
+    });
+
+    if (invalidLines.length > 0) {
+      alert(
+        "Please complete all required fields in each line before submitting"
+      );
+      return;
+    }
+    // Validate calculations
+    const hasInvalidCalculations = formData.InvoiceLine.some((line) => {
+      const calculatedExtension =
+        parseFloat(line.Price.PriceAmount) *
+        parseFloat(line.InvoicedQuantity.quantity);
+      return (
+        Math.abs(calculatedExtension - parseFloat(line.LineExtensionAmount)) >
+        0.01
+      );
+    });
+
+    if (hasInvalidCalculations) {
+      alert(
+        "There are calculation discrepancies. Please review the line items."
+      );
+      return;
+    }
+
     if (!formData.AccountingSupplierParty.PartyIdentification.ID) {
       alert("Please add and select an address before creating an invoice.");
       setIsAlertOpen(true);
@@ -1659,14 +1693,7 @@ const InvoiceForm = () => {
               type="button"
               onClick={addInvoiceLine}
               className="mt-4 px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none"
-              disabled={
-                !formData.InvoiceLine.every(
-                  (line) =>
-                    line.LineType &&
-                    line.Item.ClassifiedTaxCategory.Percent &&
-                    line.Item.Name
-                )
-              }
+              disabled={isReadOnly} // Only check if form is readonly
             >
               Add Line
             </button>
