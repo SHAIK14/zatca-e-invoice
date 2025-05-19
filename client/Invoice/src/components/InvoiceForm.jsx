@@ -63,20 +63,20 @@ const InvoiceForm = () => {
       },
     },
     AccountingCustomerParty: {
-      PartyIdentification: { ID: "" }, //4030232477
+      PartyIdentification: { ID: "4030232477" }, //4030232477
       PostalAddress: {
-        StreetName: "", //7524
-        BuildingNumber: "", //1234
-        PlotIdentification: "", //3675
-        CitySubdivisionName: "", //Mecca Al Mokarama
-        CityName: "", //Riyad
-        PostalZone: "", //12244
-        CountrySubentity: " ", //RiyadhRegion
-        Country: { IdentificationCode: "" }, //SA
+        StreetName: "7524", //7524
+        BuildingNumber: "7524", //7524
+        PlotIdentification: "3675", //3675
+        CitySubdivisionName: "Mecca Al Mokarama", //Mecca Al Mokarama
+        CityName: "Riyad", //Riyad
+        PostalZone: "12244", //12244
+        CountrySubentity: " RiyadhRegion", //RiyadhRegion
+        Country: { IdentificationCode: "SA" }, //SA
       },
-      PartyTaxScheme: { TaxScheme: { ID: "" } }, //VAT
+      PartyTaxScheme: { TaxScheme: { ID: "VAT" } }, //VAT
       PartyLegalEntity: {
-        RegistrationName: "", //فرع شركة سيرفكورب سكوير بي تي اي ليمتد
+        RegistrationName: "فرع شركة سيرفكورب سكوير بي تي اي ليمتد", //فرع شركة سيرفكورب سكوير بي تي اي ليمتد
       },
     },
     Delivery: { ActualDeliveryDate: "" },
@@ -133,7 +133,7 @@ const InvoiceForm = () => {
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // const BASE_URL = `http://localhost:8000`;
- 
+  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
 
   const fetchUserAddress = useCallback(async () => {
     try {
