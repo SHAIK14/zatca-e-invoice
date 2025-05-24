@@ -701,22 +701,22 @@ const InvoiceForm = () => {
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // const invalidLines = formData.InvoiceLine.filter((line) => {
-    //   return (
-    //     !line.LineType ||
-    //     !line.Item.ClassifiedTaxCategory.Percent ||
-    //     !line.Item.Name ||
-    //     !line.Price.PriceAmount ||
-    //     !line.InvoicedQuantity.quantity
-    //   );
-    // });
+ const invalidLines = formData.InvoiceLine.filter((line) => {
+  return (
+    !line.LineType ||
+    (line.Item.ClassifiedTaxCategory.Percent !== 0 && !line.Item.ClassifiedTaxCategory.Percent) ||
+    !line.Item.Name ||
+    !line.Price.PriceAmount ||
+    !line.InvoicedQuantity.quantity
+  );
+});
 
-    // if (invalidLines.length > 0) {
-    //   alert(
-    //     "Please complete all required fields in each line before submitting"
-    //   );
-    //   return;
-    // }
+    if (invalidLines.length > 0) {
+      alert(
+        "Please complete all required fields in each line before submitting"
+      );
+      return;
+    }
     // Validate calculations
     const hasInvalidCalculations = formData.InvoiceLine.some((line) => {
       const calculatedExtension =
