@@ -2,24 +2,84 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-// import { btoa } from "b64-lite";
 import axios from "axios";
 import AlertModal from "./AlertModal";
 import * as XLSX from "xlsx";
+import InvoiceFormSections from "./InvoiceFormSections";
+import InvoiceLineTable from "./InvoiceLineTable";
 
-// import axios from "axios";
+// New components
+const Notification = ({ type, message, onClose }) => {
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message, onClose]);
+
+  if (!message) return null;
+
+  const bgColor = type === 'success' 
+    ? 'bg-green-500' 
+    : type === 'error' 
+      ? 'bg-red-500' 
+      : 'bg-blue-500';
+
+  return (
+    <div className={`fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded shadow-lg z-50 flex items-center`}>
+      {type === 'success' && (
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+      )}
+      {type === 'error' && (
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      )}
+      <div className="text-sm">{message}</div>
+    </div>
+  );
+};
+
+const LoadingOverlay = ({ isVisible, message = "Processing Invoice..." }) => {
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div className="bg-white p-5 rounded-lg shadow-lg flex flex-col items-center">
+        <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-700">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 const InvoiceForm = () => {
-  // const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const selectedInvoice = location.state?.invoice;
+  
+  // Initialize with current date and time
+  const getCurrentDate = () => new Date().toISOString().split('T')[0];
+  const getCurrentTime = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  };
+  
+  // New state for loading and notifications
+  const [isLoading, setIsLoading] = useState(false);
+  const [notification, setNotification] = useState({ type: '', message: '' });
+  
   const [formData, setFormData] = useState({
     ProfileID: "reporting:1.0",
-    ID: "", //2024032399
+    ID: "",
     UUID: generateUUID(),
     Mode: "",
-    IssueDate: "",
-    IssueTime: "",
+    IssueDate: getCurrentDate(),
+    IssueTime: getCurrentTime(),
     InvoiceTypeCode: "388",
     DocumentCurrencyCode: "SAR",
     TaxCurrencyCode: "SAR",
@@ -43,40 +103,40 @@ const InvoiceForm = () => {
       },
     ],
     AccountingSupplierParty: {
-      PartyIdentification: { ID: "" }, //1010183482
+      PartyIdentification: { ID: "" },
       PostalAddress: {
-        StreetName: "", //Al Olaya Olaya Street
-        BuildingNumber: "", //7235
-        PlotIdentification: "", //325
-        CitySubdivisionName: "", //Al Olaya Olaya
-        CityName: "", //Riyadh
-        PostalZone: "", //12244
-        CountrySubentity: "", //Riyadh Region
-        Country: { IdentificationCode: "" }, //SA
+        StreetName: "",
+        BuildingNumber: "",
+        PlotIdentification: "",
+        CitySubdivisionName: "",
+        CityName: "",
+        PostalZone: "",
+        CountrySubentity: "",
+        Country: { IdentificationCode: "" },
       },
       PartyTaxScheme: {
-        CompanyID: "", //300000157210003--399999999900003
+        CompanyID: "",
         TaxScheme: { ID: "VAT" },
       },
       PartyLegalEntity: {
-        RegistrationName: "", //Solutions By STC
+        RegistrationName: "",
       },
     },
     AccountingCustomerParty: {
-      PartyIdentification: { ID: "4030232477" }, //4030232477
+      PartyIdentification: { ID: "4030232477" },
       PostalAddress: {
-        StreetName: "7524", //7524
-        BuildingNumber: "7524", //7524
-        PlotIdentification: "3675", //3675
-        CitySubdivisionName: "Mecca Al Mokarama", //Mecca Al Mokarama
-        CityName: "Riyad", //Riyad
-        PostalZone: "12244", //12244
-        CountrySubentity: " RiyadhRegion", //RiyadhRegion
-        Country: { IdentificationCode: "SA" }, //SA
+        StreetName: "7524",
+        BuildingNumber: "7524",
+        PlotIdentification: "3675",
+        CitySubdivisionName: "Mecca Al Mokarama",
+        CityName: "Riyad",
+        PostalZone: "12244",
+        CountrySubentity: " RiyadhRegion",
+        Country: { IdentificationCode: "SA" },
       },
-      PartyTaxScheme: { TaxScheme: { ID: "VAT" } }, //VAT
+      PartyTaxScheme: { TaxScheme: { ID: "VAT" } },
       PartyLegalEntity: {
-        RegistrationName: "فرع شركة سيرفكورب سكوير بي تي اي ليمتد", //فرع شركة سيرفكورب سكوير بي تي اي ليمتد
+        RegistrationName: "فرع شركة سيرفكورب سكوير بي تي اي ليمتد",
       },
     },
     Delivery: { ActualDeliveryDate: "" },
@@ -99,7 +159,7 @@ const InvoiceForm = () => {
     },
     InvoiceLine: [
       {
-        ID: "",
+        ID: "1",
         InvoicedQuantity: { quantity: "" },
         LineExtensionAmount: "",
         DiscountAmount: "",
@@ -120,6 +180,7 @@ const InvoiceForm = () => {
       },
     ],
   });
+  
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [qrCodeUrl, setQRCodeUrl] = useState("");
   const [clearanceStatus, setClearanceStatus] = useState(null);
@@ -132,8 +193,20 @@ const InvoiceForm = () => {
   const [showGetQRButton, setShowGetQRButton] = useState(false);
   const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  // const BASE_URL = `http://localhost:8000`;
-  // const BASE_URL = `https://zatca-e-invoice-1.onrender.com`;
+  // Helper function to show notifications
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    // Notification will auto-dismiss from the component
+  };
+  
+  // Helper function to clear notifications
+  const clearNotification = () => {
+    setNotification({ type: '', message: '' });
+  };
+
+  function generateUUID() {
+    return uuidv4().toUpperCase();
+  }
 
   const fetchUserAddress = useCallback(async () => {
     try {
@@ -147,9 +220,11 @@ const InvoiceForm = () => {
       return null;
     }
   }, [BASE_URL]);
+
   const goToAddressPage = () => {
     navigate("/addresses");
   };
+
   useEffect(() => {
     const loadAddress = async () => {
       const address = await fetchUserAddress();
@@ -184,6 +259,7 @@ const InvoiceForm = () => {
 
     loadAddress();
   }, [fetchUserAddress]);
+
   const fetchInvoiceID = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
@@ -196,7 +272,7 @@ const InvoiceForm = () => {
       }));
     } catch (error) {
       console.error("Error fetching invoice ID:", error);
-      // Handle error (e.g., show an alert to the user)
+      showNotification('error', 'Failed to fetch invoice ID');
     }
   }, [BASE_URL]);
 
@@ -205,6 +281,30 @@ const InvoiceForm = () => {
       fetchInvoiceID();
     }
   }, [selectedInvoice, formData.ID, fetchInvoiceID]);
+
+  useEffect(() => {
+    if (selectedInvoice) {
+      setFormData(selectedInvoice);
+      setQRCodeUrl(selectedInvoice.qrCode);
+      setClearanceStatus(
+        selectedInvoice.clearanceStatus || selectedInvoice.reportingStatus
+      );
+      setIsReadOnly(
+        selectedInvoice.clearanceStatus === "CLEARED" ||
+          selectedInvoice.clearanceStatus === "REPORTED"
+      );
+      setIsEditing(true);
+    }
+  }, [selectedInvoice]);
+
+  // Re-index invoice lines after add/remove
+  const reindexInvoiceLines = (lines) => {
+    return lines.map((line, index) => ({
+      ...line,
+      ID: (index + 1).toString()
+    }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     let formattedValue = value;
@@ -245,9 +345,7 @@ const InvoiceForm = () => {
       return updatedData;
     });
   };
-  function generateUUID() {
-    return uuidv4().toUpperCase();
-  }
+
   const handleCustomerChange = (field, value) => {
     setFormData((prevData) => {
       const newData = { ...prevData };
@@ -263,6 +361,7 @@ const InvoiceForm = () => {
       return newData;
     });
   };
+
   const handleTaxTotalChange = (field, value) => {
     setFormData((prevData) => ({
       ...prevData,
@@ -274,6 +373,7 @@ const InvoiceForm = () => {
       ],
     }));
   };
+
   const handleLegalMonetaryTotalChange = (field, value) => {
     setFormData((prevData) => ({
       ...prevData,
@@ -283,9 +383,12 @@ const InvoiceForm = () => {
       },
     }));
   };
+
   const handleImport = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setIsLoading(true); // Show loading while processing the file
+      
       const reader = new FileReader();
       reader.onload = (evt) => {
         try {
@@ -297,19 +400,24 @@ const InvoiceForm = () => {
           console.log("data from the excel:", data);
           processImportedData(data);
           setImportError(null);
+          showNotification('success', 'Excel data imported successfully');
         } catch (error) {
           console.error("Error processing file:", error);
           setImportError(
             "Failed to process the uploaded file. Please ensure it's a valid Excel file."
           );
+          showNotification('error', 'Failed to process Excel file');
+        } finally {
+          setIsLoading(false); // Hide loading when done
         }
       };
       reader.readAsBinaryString(file);
     }
   };
+
   const processImportedData = (data) => {
-    const newInvoiceLines = data.map((row) => {
-      const lineType = row.Type; // This line was correct
+    const newInvoiceLines = data.map((row, index) => {
+      const lineType = row.Type;
 
       let taxCategoryID, taxPercent;
 
@@ -335,7 +443,7 @@ const InvoiceForm = () => {
 
       return {
         LineType: lineType,
-        ID: row.ID,
+        ID: (index + 1).toString(), // Auto-increment ID
         Price: { PriceAmount: row.Price },
         InvoicedQuantity: { quantity: row.Quantity },
         Item: {
@@ -360,7 +468,6 @@ const InvoiceForm = () => {
       InvoiceLine: newInvoiceLines,
     }));
 
-    // Use setTimeout to ensure state has updated before triggering calculations
     setTimeout(() => {
       newInvoiceLines.forEach((line, index) => {
         handleInvoiceLineChange(index, "LineType", line.LineType);
@@ -384,32 +491,36 @@ const InvoiceForm = () => {
 
   const addInvoiceLine = () => {
     if (!isReadOnly) {
-      setFormData((prevFormData) => ({
-        ...prevFormData,
-        InvoiceLine: [
-          ...prevFormData.InvoiceLine,
-          {
-            ID: "",
-            InvoicedQuantity: { quantity: "" },
-            LineExtensionAmount: "",
-            TaxTotal: {
-              TaxAmount: "",
-              RoundingAmount: "",
-            },
-            Item: {
-              Name: "",
-              ClassifiedTaxCategory: {
-                ID: "",
-                Percent: "",
-                TaxScheme: { ID: "VAT" },
-              },
-            },
-            Price: { PriceAmount: "" },
+      setFormData((prevFormData) => {
+        const newLine = {
+          ID: (prevFormData.InvoiceLine.length + 1).toString(), // Auto-increment
+          InvoicedQuantity: { quantity: "" },
+          LineExtensionAmount: "",
+          TaxTotal: {
+            TaxAmount: "",
+            RoundingAmount: "",
           },
-        ],
-      }));
+          Item: {
+            Name: "",
+            ClassifiedTaxCategory: {
+              ID: "",
+              Percent: "",
+              TaxScheme: { ID: "VAT" },
+            },
+          },
+          Price: { PriceAmount: "" },
+        };
+        
+        return {
+          ...prevFormData,
+          InvoiceLine: [...prevFormData.InvoiceLine, newLine],
+        };
+      });
+      
+      showNotification('success', 'New line added');
     }
   };
+
   const handleInvoiceLineChange = (index, field, value) => {
     setFormData((prevFormData) => {
       const updatedInvoiceLine = [...prevFormData.InvoiceLine];
@@ -420,7 +531,7 @@ const InvoiceForm = () => {
       );
 
       if (field === "LineType" && value === "Discount" && discountLineExists) {
-        alert("Only one discount line is allowed.");
+        showNotification('error', 'Only one discount line is allowed');
         return prevFormData;
       }
 
@@ -575,38 +686,29 @@ const InvoiceForm = () => {
       };
     });
   };
+
   const removeInvoiceLine = (index) => {
     setFormData((prevFormData) => {
       const updatedInvoiceLine = [...prevFormData.InvoiceLine];
       updatedInvoiceLine.splice(index, 1);
-      return { ...prevFormData, InvoiceLine: updatedInvoiceLine };
+      // Re-index the remaining lines
+      const reindexedLines = reindexInvoiceLines(updatedInvoiceLine);
+      return { ...prevFormData, InvoiceLine: reindexedLines };
     });
+    showNotification('success', 'Line removed');
   };
 
-  useEffect(() => {
-    if (selectedInvoice) {
-      setFormData(selectedInvoice);
-      setQRCodeUrl(selectedInvoice.qrCode);
-      setClearanceStatus(
-        selectedInvoice.clearanceStatus || selectedInvoice.reportingStatus
-      );
-      // Only set to read-only if the invoice is cleared or reported
-      setIsReadOnly(
-        selectedInvoice.clearanceStatus === "CLEARED" ||
-          selectedInvoice.clearanceStatus === "REPORTED"
-      );
-      setIsEditing(true);
-    }
-  }, [selectedInvoice]);
   const handleSave = async () => {
     try {
+      setIsLoading(true);
       const token = localStorage.getItem("token");
       if (
         !formData.IssueDate ||
         !formData.Delivery.ActualDeliveryDate ||
         !formData.PaymentMeans.PaymentMeansCode
       ) {
-        alert("Please fill in issue date, Delivery, and payment code fields.");
+        showNotification('error', 'Please fill in issue date, Delivery, and payment code fields.');
+        setIsLoading(false);
         return;
       }
 
@@ -619,27 +721,31 @@ const InvoiceForm = () => {
       });
 
       console.log("Form data saved successfully:", response.data);
-      alert("Form saved as draft successfully!");
+      showNotification('success', 'Form saved as draft successfully!');
     } catch (error) {
       console.error("Error saving form data:", error);
-      alert("Error saving form. Please try again.");
+      showNotification('error', 'Error saving form. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleUpdate = async () => {
     try {
+      setIsLoading(true);
       const token = localStorage.getItem("token");
       if (
         !formData.IssueDate ||
         !formData.Delivery.ActualDeliveryDate ||
         !formData.PaymentMeans.PaymentMeansCode
       ) {
-        alert("Please fill in issue date, Delivery, and payment code fields.");
+        showNotification('error', 'Please fill in issue date, Delivery, and payment code fields.');
+        setIsLoading(false);
         return;
       }
       const updatedFormData = {
         ...formData,
-        UUID: formData.UUID || generateUUID(), // Ensure UUID is always set
+        UUID: formData.UUID || generateUUID(),
       };
 
       const url = `${BASE_URL}/invoice-form/update/${formData.ID}`;
@@ -651,18 +757,22 @@ const InvoiceForm = () => {
       });
 
       console.log("Form data updated successfully:", response.data);
-      alert("Form updated successfully!");
+      showNotification('success', 'Form updated successfully!');
     } catch (error) {
       console.error("Error updating form data:", error);
-      alert("Error updating form. Please try again.");
+      showNotification('error', 'Error updating form. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGetQR = async () => {
     try {
+      setIsLoading(true);
       if (!formData.AccountingSupplierParty.PartyIdentification.ID) {
-        alert("Please add and select an address before generating QR code.");
+        showNotification('error', 'Please add and select an address before generating QR code.');
         setIsAlertOpen(true);
+        setIsLoading(false);
         return;
       }
 
@@ -689,35 +799,36 @@ const InvoiceForm = () => {
       setClearanceStatus("PENDING_SUBMISSION");
       setIsReadOnly(true);
 
-      alert("QR code and PDF generated successfully!");
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
+      showNotification('success', 'QR code and PDF generated successfully!');
+      
+      // No need to scroll as we're rearranging the layout
     } catch (error) {
       console.error("Error generating QR code:", error);
-      alert("An error occurred while generating QR code and PDF");
+      showNotification('error', 'An error occurred while generating QR code and PDF');
+    } finally {
+      setIsLoading(false);
     }
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
- const invalidLines = formData.InvoiceLine.filter((line) => {
-  return (
-    !line.LineType ||
-    (line.Item.ClassifiedTaxCategory.Percent !== 0 && !line.Item.ClassifiedTaxCategory.Percent) ||
-    !line.Item.Name ||
-    !line.Price.PriceAmount ||
-    !line.InvoicedQuantity.quantity
-  );
-});
+    
+    // Validate form data before submission
+    const invalidLines = formData.InvoiceLine.filter((line) => {
+      return (
+        !line.LineType ||
+        (line.Item.ClassifiedTaxCategory.Percent !== 0 && !line.Item.ClassifiedTaxCategory.Percent) ||
+        !line.Item.Name ||
+        !line.Price.PriceAmount ||
+        !line.InvoicedQuantity.quantity
+      );
+    });
 
     if (invalidLines.length > 0) {
-      alert(
-        "Please complete all required fields in each line before submitting"
-      );
+      showNotification('error', 'Please complete all required fields in each line before submitting');
       return;
     }
-    // Validate calculations
+
     const hasInvalidCalculations = formData.InvoiceLine.some((line) => {
       const calculatedExtension =
         parseFloat(line.Price.PriceAmount) *
@@ -728,123 +839,141 @@ const InvoiceForm = () => {
       );
     });
 
-    if (hasInvalidCalculations) {
-      alert(
-        "There are calculation discrepancies. Please review the line items."
-      );
+   if (hasInvalidCalculations) {
+      showNotification('error', 'There are calculation discrepancies. Please review the line items.');
       return;
     }
 
     if (!formData.AccountingSupplierParty.PartyIdentification.ID) {
-      alert("Please add and select an address before creating an invoice.");
+      showNotification('error', 'Please add and select an address before creating an invoice.');
       setIsAlertOpen(true);
       return;
     }
     console.log("Form submitted:", formData);
 
     try {
+      setIsLoading(true);
+      
       if (
         !formData.IssueDate ||
         !formData.Delivery.ActualDeliveryDate ||
         !formData.PaymentMeans.PaymentMeansCode
       ) {
-        alert("Please fill in all mandatory fields.");
+        showNotification('error', 'Please fill in all mandatory fields.');
+        setIsLoading(false);
         return;
       }
+      
       const data = {
         formData: formData,
         action: "submit",
       };
+      
       const token = localStorage.getItem("token");
       const url =
         formData.Mode === "Standard"
           ? `${BASE_URL}/submit-form-data`
           : `${BASE_URL}/submit-simplified-form-data`;
-      // Create new invoice
+      
       const response = await axios.post(url, data, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
+      
       console.log("Response from backend:", response.data);
 
       const qrCodeUrl = response.data.qrCodeUrl;
       console.log("qrCodeUrl in the client", qrCodeUrl);
       const clearanceStatus =
         response.data.clearanceStatus || response.data.reportingStatus;
+        
       if (response.data.pdf) {
         setPdfData(response.data.pdf);
         setShowPdfButton(true);
       } else {
         console.error("PDF data not received from server");
-        alert("PDF generation failed. Please try again.");
+        showNotification('error', 'PDF generation failed. Please try again.');
       }
+      
       setQRCodeUrl(qrCodeUrl);
       setClearedInvoiceXml(response.data.clearedInvoiceXml);
       console.log("clearedxml in client:", response.data.clearedInvoiceXml);
       setClearanceStatus(clearanceStatus);
-
       setIsReadOnly(true);
-      alert(
-        `Invoice ${
+      
+      showNotification('success', `Invoice ${
           formData.Mode === "Standard" ? "cleared" : "reported"
-        } successfully! Check the QR code and status at the top.`
-      );
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
+        } successfully!`);
 
       console.log("Form data submitted successfully:", response.data);
     } catch (error) {
       console.error("Error submitting form data:", error);
       if (error.response) {
-        alert(`Error: ${error.response.data}`);
+        showNotification('error', `Error: ${error.response.data}`);
       } else {
-        alert("An error occurred while sending data to API");
+        showNotification('error', 'An error occurred while sending data to API');
       }
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDownloadPDF = () => {
-    if (pdfData) {
-      // Convert base64 to blob
-      const byteCharacters = atob(pdfData);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: "application/pdf" });
+    try {
+      setIsLoading(true);
+      
+      if (pdfData) {
+        const byteCharacters = atob(pdfData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: "application/pdf" });
 
-      // Create download link
-      const link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob);
-      link.download = `invoice_${formData.ID}.pdf`;
-      link.click();
-      window.URL.revokeObjectURL(link.href);
-    } else {
-      alert("PDF data is not available. Please try submitting the form again.");
+        const link = document.createElement("a");
+        link.href = window.URL.createObjectURL(blob);
+        link.download = `invoice_${formData.ID}.pdf`;
+        link.click();
+        window.URL.revokeObjectURL(link.href);
+        
+        showNotification('success', 'PDF downloaded successfully');
+      } else {
+        showNotification('error', 'PDF data is not available. Please try submitting the form again.');
+      }
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      showNotification('error', 'Failed to download PDF');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">ZATCA Invoice Form</h1>
-        <div className="flex space-x-4">
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      {/* Loading Overlay */}
+      <LoadingOverlay isVisible={isLoading} />
+      
+      {/* Notification */}
+      <Notification 
+        type={notification.type}
+        message={notification.message}
+        onClose={clearNotification}
+      />
+      
+      {/* Header */}
+      <div className="flex justify-between items-center px-2 py-1 bg-white shadow-sm">
+        <h1 className="text-lg font-bold">ZATCA Invoice Form</h1>
+        <div className="flex space-x-1">
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 focus:outline-none flex items-center"
+            className="px-2 py-1 text-xs text-white bg-green-500 rounded hover:bg-green-600 focus:outline-none flex items-center"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-2"
+              className="h-3 w-3 mr-1"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -861,11 +990,11 @@ const InvoiceForm = () => {
           {showPdfButton && (
             <button
               onClick={handleDownloadPDF}
-              className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none flex items-center"
+              className="px-2 py-1 text-xs text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none flex items-center"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 mr-2"
+                className="h-3 w-3 mr-1"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -882,625 +1011,367 @@ const InvoiceForm = () => {
           )}
         </div>
       </div>
-      <form onSubmit={handleSubmit} className="grid grid-cols-4 gap-6">
-        {/* General Information */}
-        <div className="col-span-4 bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">General Info</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-700 font-bold mb-2">
-                    ID
-                  </label>
-                  <input
-                    type="text"
-                    name="ID"
-                    value={formData.ID}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-bold mb-2">
-                    Mode
-                  </label>
-                  <select
-                    name="Mode"
-                    value={formData.Mode}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                  >
-                    <option value="" disabled>
-                      Select Mode
-                    </option>
-                    <option value="Standard">Standard</option>
-                    <option value="Simplified">Simplified</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-bold mb-2">
-                    Issue Date
-                  </label>
-                  <input
-                    type="date"
-                    name="IssueDate"
-                    value={
-                      formData.IssueDate ? formData.IssueDate.split("T")[0] : ""
-                    }
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-bold mb-2">
-                    Issue Time
-                  </label>
-                  <input
-                    type="time"
-                    name="IssueTime"
-                    value={formData.IssueTime}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-bold mb-2">
-                    Invoice Type
-                  </label>
-                  <select
-                    name="InvoiceTypeCode"
-                    value={formData.InvoiceTypeCode}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                  >
-                    <option value="388">Standard - 388</option>
-                    <option value="381">Credit - 381</option>
-                    <option value="383">Debit - 383</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-bold mb-2">
-                    Document Currency
-                  </label>
-                  <select
-                    name="DocumentCurrencyCode"
-                    value={formData.DocumentCurrencyCode}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                  >
-                    <option value="SAR">SAR</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-bold mb-2">
-                    Tax Currency
-                  </label>
-                  <select
-                    name="TaxCurrencyCode"
-                    value={formData.TaxCurrencyCode}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                  >
-                    <option value="SAR">SAR</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
+
+      {/* Main Form */}
+      <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden p-1">
+        {/* Upper Section: General Info, Customer Info, Status */}
+        <div className="grid grid-cols-12 gap-1 mb-1">
+          {/* General Info */}
+          <div className="col-span-5 bg-white shadow rounded p-2">
+            <h2 className="text-sm font-bold mb-1">General Info</h2>
+            <div className="grid grid-cols-2 gap-1">
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">ID</label>
+                <input
+                  type="text"
+                  name="ID"
+                  value={formData.ID}
+                  onChange={handleChange}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Mode</label>
+                <select
+                  name="Mode"
+                  value={formData.Mode}
+                  onChange={handleChange}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                >
+                  <option value="" disabled>Select Mode</option>
+                  <option value="Standard">Standard</option>
+                  <option value="Simplified">Simplified</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Issue Date</label>
+                <input
+                  type="date"
+                  name="IssueDate"
+                  value={formData.IssueDate ? formData.IssueDate.split("T")[0] : ""}
+                  onChange={handleChange}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Issue Time</label>
+                <input
+                  type="time"
+                  name="IssueTime"
+                  value={formData.IssueTime}
+                  onChange={handleChange}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Invoice Type</label>
+                <select
+                  name="InvoiceTypeCode"
+                  value={formData.InvoiceTypeCode}
+                  onChange={handleChange}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                >
+                  <option value="388">Standard - 388</option>
+                  <option value="381">Credit - 381</option>
+                  <option value="383">Debit - 383</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Doc Currency</label>
+                <select
+                  name="DocumentCurrencyCode"
+                  value={formData.DocumentCurrencyCode}
+                  onChange={handleChange}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                >
+                  <option value="SAR">SAR</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="block text-gray-700 text-xs font-medium">Tax Currency</label>
+                <select
+                  name="TaxCurrencyCode"
+                  value={formData.TaxCurrencyCode}
+                  onChange={handleChange}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                >
+                  <option value="SAR">SAR</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
               </div>
             </div>
-            <div className="flex flex-col items-center justify-start">
-              {/* QR Code */}
-              <div className="bg-white shadow rounded-lg p-6 flex flex-col items-center justify-start h-full border-2 border-gray-300">
-                <h2 className="text-xl font-bold mb-4">Status</h2>
+          </div>
+          
+          {/* Customer Info */}
+          <div className="col-span-5 bg-white shadow rounded p-2">
+            <h2 className="text-sm font-bold mb-1">Customer Info</h2>
+            <div className="grid grid-cols-2 gap-1">
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Party ID</label>
+                <input
+                  type="text"
+                  value={formData.AccountingCustomerParty.PartyIdentification.ID}
+                  onChange={(e) => handleCustomerChange("PartyIdentification.ID", e.target.value)}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Registration</label>
+                <input
+                  type="text"
+                  value={formData.AccountingCustomerParty.PartyLegalEntity.RegistrationName}
+                  onChange={(e) => handleCustomerChange("PartyLegalEntity.RegistrationName", e.target.value)}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Street</label>
+                <input
+                  type="text"
+                  value={formData.AccountingCustomerParty.PostalAddress.StreetName}
+                  onChange={(e) => handleCustomerChange("PostalAddress.StreetName", e.target.value)}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Building</label>
+                <input
+                  type="text"
+                  value={formData.AccountingCustomerParty.PostalAddress.BuildingNumber}
+                  onChange={(e) => handleCustomerChange("PostalAddress.BuildingNumber", e.target.value)}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">City</label>
+                <input
+                  type="text"
+                  value={formData.AccountingCustomerParty.PostalAddress.CityName}
+                  onChange={(e) => handleCustomerChange("PostalAddress.CityName", e.target.value)}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Country</label>
+                <input
+                  type="text"
+                  value={formData.AccountingCustomerParty.PostalAddress.Country.IdentificationCode}
+                  onChange={(e) => handleCustomerChange("PostalAddress.Country.IdentificationCode", e.target.value)}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Plot ID</label>
+                <input
+                  type="text"
+                  value={formData.AccountingCustomerParty.PostalAddress.PlotIdentification}
+                  onChange={(e) => handleCustomerChange("PostalAddress.PlotIdentification", e.target.value)}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Postal Zone</label>
+                <input
+                  type="text"
+                  value={formData.AccountingCustomerParty.PostalAddress.PostalZone}
+                  onChange={(e) => handleCustomerChange("PostalAddress.PostalZone", e.target.value)}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+          
+          {/* Status and Delivery & Payment */}
+          <div className="col-span-2 space-y-1">
+            {/* Status */}
+            <div className="bg-white shadow rounded p-2">
+              <h2 className="text-sm font-bold mb-1">Status</h2>
+              <div className="flex flex-col items-center">
                 {clearanceStatus ? (
-                  <div className="text-center">
-                    <p
-                      className={`font-bold text-xl mb-4 ${
-                        clearanceStatus === "CLEARED"
-                          ? "text-green-500"
-                          : clearanceStatus === "REPORTED"
-                          ? "text-blue-500"
-                          : clearanceStatus === "PENDING_SUBMISSION"
-                          ? "text-yellow-500"
-                          : "text-gray-500"
-                      }`}
-                    >
-                      {clearanceStatus === "PENDING_SUBMISSION"
-                        ? "Pending Submission"
-                        : clearanceStatus}
-                    </p>
+                  <>
+                    <div className={`inline-block px-2 py-0.5 rounded-full text-xs mb-1 font-medium ${
+                      clearanceStatus === "CLEARED" ? "bg-green-100 text-green-800" :
+                      clearanceStatus === "REPORTED" ? "bg-blue-100 text-blue-800" :
+                      clearanceStatus === "PENDING_SUBMISSION" ? "bg-yellow-100 text-yellow-800" :
+                      "bg-gray-100 text-gray-800"
+                    }`}>
+                      {clearanceStatus === "PENDING_SUBMISSION" ? "Pending" : clearanceStatus}
+                    </div>
                     {qrCodeUrl && (
                       <img
-                        src={
-                          qrCodeUrl.startsWith("data:")
-                            ? qrCodeUrl
-                            : `data:image/png;base64,${qrCodeUrl}`
-                        }
+                        src={qrCodeUrl.startsWith("data:") ? qrCodeUrl : `data:image/png;base64,${qrCodeUrl}`}
                         alt="QR Code"
-                        className="max-w-full mx-auto"
+                        className="h-16 w-16 object-contain"
                       />
                     )}
-                  </div>
+                  </>
                 ) : (
-                  <div className="w-40 h-40 bg-gray-200 mx-auto"></div>
+                  <div className="w-16 h-16 bg-gray-200"></div>
                 )}
               </div>
             </div>
-          </div>
-        </div>
-        {/* Customer Information */}
-        <div className="col-span-2 bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Customer Info</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Party ID
-              </label>
-              <input
-                type="text"
-                value={formData.AccountingCustomerParty.PartyIdentification.ID}
-                onChange={(e) =>
-                  handleCustomerChange("PartyIdentification.ID", e.target.value)
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Street Name
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.AccountingCustomerParty.PostalAddress.StreetName
-                }
-                onChange={(e) =>
-                  handleCustomerChange(
-                    "PostalAddress.StreetName",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Building Number
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.AccountingCustomerParty.PostalAddress.BuildingNumber
-                }
-                onChange={(e) =>
-                  handleCustomerChange(
-                    "PostalAddress.BuildingNumber",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Plot Identification
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.AccountingCustomerParty.PostalAddress
-                    .PlotIdentification
-                }
-                onChange={(e) =>
-                  handleCustomerChange(
-                    "PostalAddress.PlotIdentification",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                City Subdivision Name
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.AccountingCustomerParty.PostalAddress
-                    .CitySubdivisionName
-                }
-                onChange={(e) =>
-                  handleCustomerChange(
-                    "PostalAddress.CitySubdivisionName",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                City Name
-              </label>
-              <input
-                type="text"
-                value={formData.AccountingCustomerParty.PostalAddress.CityName}
-                onChange={(e) =>
-                  handleCustomerChange("PostalAddress.CityName", e.target.value)
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Postal Zone
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.AccountingCustomerParty.PostalAddress.PostalZone
-                }
-                onChange={(e) =>
-                  handleCustomerChange(
-                    "PostalAddress.PostalZone",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Country Subentity
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.AccountingCustomerParty.PostalAddress
-                    .CountrySubentity
-                }
-                onChange={(e) =>
-                  handleCustomerChange(
-                    "PostalAddress.CountrySubentity",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Country Identification Code
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.AccountingCustomerParty.PostalAddress.Country
-                    .IdentificationCode
-                }
-                onChange={(e) =>
-                  handleCustomerChange(
-                    "PostalAddress.Country.IdentificationCode",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Party Tax Scheme ID
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.AccountingCustomerParty.PartyTaxScheme.TaxScheme.ID
-                }
-                onChange={(e) =>
-                  handleCustomerChange(
-                    "PartyTaxScheme.TaxScheme.ID",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Registration Name
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.AccountingCustomerParty.PartyLegalEntity
-                    .RegistrationName
-                }
-                onChange={(e) =>
-                  handleCustomerChange(
-                    "PartyLegalEntity.RegistrationName",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Delivery and Payment */}
-        <div className="col-span-2 bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Delivery & Payment</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Delivery Date
-              </label>
-              <input
-                type="date"
-                value={
-                  formData.Delivery.ActualDeliveryDate
-                    ? formData.Delivery.ActualDeliveryDate.split("T")[0]
-                    : ""
-                }
-                onChange={(e) =>
-                  setFormData((prevData) => ({
+            
+            {/* Delivery & Payment */}
+            <div className="bg-white shadow rounded p-2">
+              <h2 className="text-sm font-bold mb-1">Delivery & Payment</h2>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Delivery Date</label>
+                <input
+                  type="date"
+                  value={formData.Delivery.ActualDeliveryDate ? formData.Delivery.ActualDeliveryDate.split("T")[0] : ""}
+                  onChange={(e) => setFormData(prevData => ({
                     ...prevData,
-                    Delivery: {
-                      ...prevData.Delivery,
-                      ActualDeliveryDate: e.target.value,
-                    },
-                  }))
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Payment Means
-              </label>
-              <input
-                type="text"
-                value={formData.PaymentMeans.PaymentMeansCode}
-                onChange={(e) =>
-                  setFormData((prevData) => ({
+                    Delivery: { ...prevData.Delivery, ActualDeliveryDate: e.target.value }
+                  }))}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                  required
+                />
+              </div>
+              <div className="mt-1">
+                <label className="block text-gray-700 text-xs font-medium">Payment Code</label>
+                <input
+                  type="text"
+                  value={formData.PaymentMeans.PaymentMeansCode}
+                  onChange={(e) => setFormData(prevData => ({
                     ...prevData,
-                    PaymentMeans: {
-                      ...prevData.PaymentMeans,
-                      PaymentMeansCode: e.target.value,
-                    },
-                  }))
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                required
-              />
+                    PaymentMeans: { ...prevData.PaymentMeans, PaymentMeansCode: e.target.value }
+                  }))}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                  required
+                />
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Legal Monetary Total */}
-        <div className="col-span-2 bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Legal Monetary Total</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Line Extension Amount
-              </label>
-              <input
-                type="text"
-                value={formData.LegalMonetaryTotal.LineExtensionAmount}
-                onChange={(e) =>
-                  handleLegalMonetaryTotalChange(
-                    "LineExtensionAmount",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
+        
+        {/* Middle Section: Legal Monetary Total and Tax Total */}
+        <div className="grid grid-cols-12 gap-1 mb-1">
+          {/* Legal Monetary Total */}
+          <div className="col-span-6 bg-white shadow rounded p-2">
+            <h2 className="text-sm font-bold mb-1">Legal Monetary Total</h2>
+            <div className="grid grid-cols-3 gap-1">
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Line Extension</label>
+                <input
+                  type="text"
+                  value={formData.LegalMonetaryTotal.LineExtensionAmount}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Tax Exclusive</label>
+                <input
+                  type="text"
+                  value={formData.LegalMonetaryTotal.TaxExclusiveAmount}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Tax Inclusive</label>
+                <input
+                  type="text"
+                  value={formData.LegalMonetaryTotal.TaxInclusiveAmount}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Allowance</label>
+                <input
+                  type="text"
+                  value={formData.LegalMonetaryTotal.AllowanceTotalAmount}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-gray-700 text-xs font-medium">Payable Amount</label>
+                <input
+                  type="text"
+                  value={formData.LegalMonetaryTotal.PayableAmount}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Tax Exclusive Amount
-              </label>
-              <input
-                type="text"
-                value={formData.LegalMonetaryTotal.TaxExclusiveAmount}
-                onChange={(e) =>
-                  handleLegalMonetaryTotalChange(
-                    "TaxExclusiveAmount",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Tax Inclusive Amount
-              </label>
-              <input
-                type="text"
-                value={formData.LegalMonetaryTotal.TaxInclusiveAmount}
-                onChange={(e) =>
-                  handleLegalMonetaryTotalChange(
-                    "TaxInclusiveAmount",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Allowance Total Amount
-              </label>
-              <input
-                type="text"
-                value={formData.LegalMonetaryTotal.AllowanceTotalAmount}
-                onChange={(e) =>
-                  handleLegalMonetaryTotalChange(
-                    "AllowanceTotalAmount",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Payable Amount
-              </label>
-              <input
-                type="text"
-                value={formData.LegalMonetaryTotal.PayableAmount}
-                onChange={(e) =>
-                  handleLegalMonetaryTotalChange(
-                    "PayableAmount",
-                    e.target.value
-                  )
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
+          </div>
+          
+          {/* Tax Total */}
+          <div className="col-span-6 bg-white shadow rounded p-2">
+            <h2 className="text-sm font-bold mb-1">Tax Total</h2>
+            <div className="grid grid-cols-3 gap-1">
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Tax Amount</label>
+                <input
+                  type="text"
+                  value={formData.TaxTotal[0].TaxAmount}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Taxable Amount</label>
+                <input
+                  type="text"
+                  value={formData.TaxTotal[0].TaxSubtotal.TaxableAmount}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Tax Category</label>
+                <input
+                  type="text"
+                  value={formData.TaxTotal[0].TaxSubtotal.TaxCategory.ID}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 text-xs font-medium">Tax %</label>
+                <input
+                  type="text"
+                  value={formData.TaxTotal[0].TaxSubtotal.TaxCategory.Percent}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-gray-700 text-xs font-medium">Tax Scheme</label>
+                <input
+                  type="text"
+                  value={formData.TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID}
+                  className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                  readOnly
+                />
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Tax Total */}
-        <div className="col-span-2 bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">Tax Total</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Tax Amount
-              </label>
-              <input
-                type="text"
-                value={formData.TaxTotal[0].TaxAmount}
-                onChange={(e) =>
-                  handleTaxTotalChange("TaxAmount", e.target.value)
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Taxable Amount
-              </label>
-              <input
-                type="text"
-                value={formData.TaxTotal[0].TaxSubtotal.TaxableAmount}
-                onChange={(e) =>
-                  handleTaxTotalChange("TaxSubtotal", {
-                    ...formData.TaxTotal[0].TaxSubtotal,
-                    TaxableAmount: e.target.value,
-                  })
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Tax Category ID
-              </label>
-              <input
-                type="text"
-                value={formData.TaxTotal[0].TaxSubtotal.TaxCategory.ID}
-                onChange={(e) =>
-                  handleTaxTotalChange("TaxSubtotal", {
-                    ...formData.TaxTotal[0].TaxSubtotal,
-                    TaxCategory: {
-                      ...formData.TaxTotal[0].TaxSubtotal.TaxCategory,
-                      ID: e.target.value,
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Tax Category Percent
-              </label>
-              <input
-                type="text"
-                value={formData.TaxTotal[0].TaxSubtotal.TaxCategory.Percent}
-                onChange={(e) =>
-                  handleTaxTotalChange("TaxSubtotal", {
-                    ...formData.TaxTotal[0].TaxSubtotal,
-                    TaxCategory: {
-                      ...formData.TaxTotal[0].TaxSubtotal.TaxCategory,
-                      Percent: e.target.value,
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-bold mb-2">
-                Tax Scheme ID
-              </label>
-              <input
-                type="text"
-                value={
-                  formData.TaxTotal[0].TaxSubtotal.TaxCategory.TaxScheme.ID
-                }
-                onChange={(e) =>
-                  handleTaxTotalChange("TaxSubtotal", {
-                    ...formData.TaxTotal[0].TaxSubtotal,
-                    TaxCategory: {
-                      ...formData.TaxTotal[0].TaxSubtotal.TaxCategory,
-                      TaxScheme: {
-                        ...formData.TaxTotal[0].TaxSubtotal.TaxCategory
-                          .TaxScheme,
-                        ID: e.target.value,
-                      },
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                readOnly
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Invoice Line */}
-        {/* Invoice Line */}
-        <div className="col-span-4 bg-white shadow rounded-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">Invoice Line</h2>
+        
+        {/* Invoice Lines Table - Scrollable */}
+        <div className="bg-white shadow rounded p-2 flex-1 flex flex-col min-h-0">
+          <div className="flex justify-between items-center mb-1">
+            <h2 className="text-sm font-bold">Invoice Lines</h2>
             {!isReadOnly && (
-              <div className="flex items-center">
-                <label className="flex items-center px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none cursor-pointer transition duration-300 ease-in-out">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                    />
+              <div className="flex space-x-1">
+                <button
+                  type="button"
+                  onClick={addInvoiceLine}
+                  className="px-2 py-0.5 text-xs text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none"
+                >
+                  Add Line
+                </button>
+                <label className="flex items-center px-2 py-0.5 text-xs text-white bg-green-500 rounded hover:bg-green-600 focus:outline-none cursor-pointer">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   Import Excel
                   <input
@@ -1513,204 +1384,153 @@ const InvoiceForm = () => {
               </div>
             )}
           </div>
-          <table className="w-full text-left table-collapse">
-            <thead>
-              <tr>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  Type
-                </th>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  ID
-                </th>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  Price
-                </th>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  Quantity
-                </th>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  Line Amount
-                </th>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  Tax %
-                </th>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  Tax Amount
-                </th>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  Item Name
-                </th>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  Discount
-                </th>
-                <th className="text-sm font-medium text-gray-700 p-2 bg-gray-100">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {formData.InvoiceLine.map((line, index) => (
-                <tr key={index} className="hover:bg-gray-100">
-                  <td className="p-2 border-t">
-                    <select
-                      value={line.LineType}
-                      onChange={(e) =>
-                        handleInvoiceLineChange(
-                          index,
-                          "LineType",
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                      required
-                    >
-                      <option value="">Select Type</option>
-                      <option value="Item">Item</option>
-                      <option value="Discount">Discount</option>
-                      <option value="Exemption">Exemption</option>
-                      <option value="Export">Export</option>
-                      <option value="GCC">GCC</option>
-                      <option value="Zero">Zero</option>
-                    </select>
-                  </td>
-                  <td className="p-2 border-t">
-                    <input
-                      type="text"
-                      value={line.ID}
-                      onChange={(e) =>
-                        handleInvoiceLineChange(index, "ID", e.target.value)
-                      }
-                      className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                    />
-                  </td>
-                  <td className="p-2 border-t">
-                    <input
-                      type="text"
-                      value={line.Price.PriceAmount}
-                      onChange={(e) =>
-                        handleInvoiceLineChange(
-                          index,
-                          "Price.PriceAmount",
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                    />
-                  </td>
-                  <td className="p-2 border-t">
-                    <input
-                      type="text"
-                      value={line.InvoicedQuantity.quantity}
-                      onChange={(e) =>
-                        handleInvoiceLineChange(index, "InvoicedQuantity", {
-                          ...line.InvoicedQuantity,
-                          quantity: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                    />
-                  </td>
-                  <td className="p-2 border-t">
-                    <input
-                      type="text"
-                      value={line.LineExtensionAmount}
-                      className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none "
-                    />
-                  </td>
-                  <td className="p-2 border-t">
-                    <select
-                      value={line.Item.ClassifiedTaxCategory.Percent}
-                      onChange={(e) =>
-                        handleInvoiceLineChange(
-                          index,
-                          "Item.ClassifiedTaxCategory.Percent",
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                      required
-                    >
-                      <option value="">Select Tax %</option>
-                      <option value="0">0%</option>
-                      <option value="5">5%</option>
-                      <option value="15">15%</option>
-                    </select>
-                  </td>
-                  <td className="p-2 border-t">
-                    <input
-                      type="text"
-                      value={line.TaxTotal.TaxAmount}
-                      className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none "
-                    />
-                  </td>
-                  <td className="p-2 border-t">
-                    <input
-                      type="text"
-                      value={line.Item.Name}
-                      onChange={(e) =>
-                        handleInvoiceLineChange(
-                          index,
-                          "Item.Name",
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                      required
-                    />
-                  </td>
-                  <td className="p-2 border-t">
-                    {line.LineType === "Discount" && (
+          
+          {importError && <div className="text-red-500 text-xs mb-1">{importError}</div>}
+          
+          <div className="flex-1 overflow-auto border rounded min-h-0">
+            <table className="w-full text-left table-fixed">
+              <thead className="sticky top-0 bg-gray-100">
+                <tr>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b w-20">Type</th>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b w-10">ID</th>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b w-16">Price</th>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b w-12">Qty</th>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b w-20">Line Amt</th>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b w-14">Tax %</th>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b w-16">Tax Amt</th>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b">Item Name</th>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b w-16">Discount</th>
+                  <th className="text-xs font-medium text-gray-700 p-1 border-b w-14">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.InvoiceLine.map((line, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="p-1 border-b">
+                      <select
+                        value={line.LineType}
+                        onChange={(e) => handleInvoiceLineChange(index, "LineType", e.target.value)}
+                        className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                        required
+                        disabled={isReadOnly}
+                      >
+                        <option value="">Select</option>
+                        <option value="Item">Item</option>
+                        <option value="Discount">Discount</option>
+                        <option value="Exemption">Exemption</option>
+                        <option value="Export">Export</option>
+                        <option value="GCC">GCC</option>
+                        <option value="Zero">Zero</option>
+                      </select>
+                    </td>
+                    <td className="p-1 border-b">
                       <input
                         type="text"
-                        value={line.DiscountAmount}
-                        onChange={(e) =>
-                          handleInvoiceLineChange(
-                            index,
-                            "DiscountAmount",
-                            e.target.value
-                          )
-                        }
-                        className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                        value={line.ID}
+                        className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                        readOnly
                       />
-                    )}
-                  </td>
-                  <td className="p-2 border-t">
-                    {!isReadOnly && (
-                      <button
-                        onClick={() => removeInvoiceLine(index)}
-                        className="text-red-500 hover:text-red-700 font-semibold"
-                        disabled={formData.InvoiceLine.length === 1}
+                    </td>
+                    <td className="p-1 border-b">
+                      <input
+                        type="text"
+                        value={line.Price.PriceAmount}
+                        onChange={(e) => handleInvoiceLineChange(index, "Price.PriceAmount", e.target.value)}
+                        className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                        disabled={isReadOnly}
+                      />
+                    </td>
+                    <td className="p-1 border-b">
+                      <input
+                        type="text"
+                        value={line.InvoicedQuantity.quantity}
+                        onChange={(e) => handleInvoiceLineChange(index, "InvoicedQuantity", {
+                          ...line.InvoicedQuantity,
+                          quantity: e.target.value
+                        })}
+                        className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                        disabled={isReadOnly}
+                      />
+                    </td>
+                    <td className="p-1 border-b">
+                      <input
+                        type="text"
+                        value={line.LineExtensionAmount}
+                        className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                        readOnly
+                      />
+                    </td>
+                    <td className="p-1 border-b">
+                      <select
+                        value={line.Item.ClassifiedTaxCategory.Percent}
+                        onChange={(e) => handleInvoiceLineChange(index, "Item.ClassifiedTaxCategory.Percent", e.target.value)}
+                        className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                        required
+                        disabled={isReadOnly}
                       >
-                        Remove
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!isReadOnly && (
-            <button
-              type="button"
-              onClick={addInvoiceLine}
-              className="mt-4 px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none"
-              disabled={isReadOnly} // Only check if form is readonly
-            >
-              Add Line
-            </button>
-          )}
+                        <option value="">Select</option>
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="15">15%</option>
+                      </select>
+                    </td>
+                    <td className="p-1 border-b">
+                      <input
+                        type="text"
+                        value={line.TaxTotal.TaxAmount}
+                        className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded bg-gray-100"
+                        readOnly
+                      />
+                    </td>
+                    <td className="p-1 border-b">
+                      <input
+                        type="text"
+                        value={line.Item.Name}
+                        onChange={(e) => handleInvoiceLineChange(index, "Item.Name", e.target.value)}
+                        className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                        required
+                        disabled={isReadOnly}
+                      />
+                    </td>
+                    <td className="p-1 border-b">
+                      {line.LineType === "Discount" && (
+                        <input
+                          type="text"
+                          value={line.DiscountAmount}
+                          onChange={(e) => handleInvoiceLineChange(index, "DiscountAmount", e.target.value)}
+                          className="w-full px-1 py-0.5 text-xs text-gray-700 border rounded focus:outline-none"
+                          disabled={isReadOnly}
+                        />
+                      )}
+                    </td>
+                    <td className="p-1 border-b">
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => removeInvoiceLine(index)}
+                          className="text-red-500 hover:text-red-700 text-xs font-medium"
+                          disabled={formData.InvoiceLine.length === 1}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-        {/* QR Code */}
-
-        {/* Submit and Save Buttons */}
-        <div className="col-span-4 flex justify-end">
+        
+        {/* Action Buttons */}
+        <div className="mt-1 flex justify-end space-x-1">
           {!isReadOnly && (
             <>
               {isEditing ? (
                 <button
                   type="button"
                   onClick={handleUpdate}
-                  className="px-4 py-2 text-white bg-yellow-500 rounded-lg hover:bg-yellow-600 focus:outline-none mr-2"
+                  className="px-2 py-1 text-xs text-white bg-yellow-500 rounded hover:bg-yellow-600 focus:outline-none"
                 >
                   Update Draft
                 </button>
@@ -1718,7 +1538,7 @@ const InvoiceForm = () => {
                 <button
                   type="button"
                   onClick={handleSave}
-                  className="px-4 py-2 text-white bg-green-500 rounded-lg hover:bg-green-600 focus:outline-none mr-2"
+                  className="px-2 py-1 text-xs text-white bg-green-500 rounded hover:bg-green-600 focus:outline-none"
                 >
                   Save as Draft
                 </button>
@@ -1727,15 +1547,14 @@ const InvoiceForm = () => {
                 <button
                   type="button"
                   onClick={handleGetQR}
-                  className="px-4 py-2 text-white bg-purple-500 rounded-lg hover:bg-purple-600 focus:outline-none mr-2"
+                  className="px-2 py-1 text-xs text-white bg-purple-500 rounded hover:bg-purple-600 focus:outline-none"
                 >
                   Get QR
                 </button>
               )}
               <button
                 type="submit"
-                onClick={handleSubmit}
-                className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none"
+                className="px-2 py-1 text-xs text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none"
               >
                 Submit Invoice
               </button>
@@ -1743,6 +1562,7 @@ const InvoiceForm = () => {
           )}
         </div>
       </form>
+
       <AlertModal
         isOpen={isAlertOpen}
         message="No selected address found. You need to add and select an address before creating an invoice."
@@ -1751,9 +1571,9 @@ const InvoiceForm = () => {
           goToAddressPage();
         }}
       />
-      {importError && <div className="text-red-500 mt-2">{importError}</div>}
     </div>
   );
 };
 
 export default InvoiceForm;
+                     
