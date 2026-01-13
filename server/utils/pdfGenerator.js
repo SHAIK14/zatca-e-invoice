@@ -2,8 +2,14 @@
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 
-// Add this line to support Arabic text
-const arabicFont = fs.readFileSync("./fonts/NotoSansArabic-Regular.ttf");
+// Add this line to support Arabic text - with error handling
+let arabicFont;
+try {
+  arabicFont = fs.readFileSync("./fonts/NotoSansArabic-Regular.ttf");
+} catch (error) {
+  console.warn("Arabic font file not found, using default font");
+  arabicFont = null;
+}
 
 const generatePDF = (invoiceData, qrCodeUrl) => {
   return new Promise((resolve, reject) => {
@@ -16,8 +22,10 @@ const generatePDF = (invoiceData, qrCodeUrl) => {
       resolve(pdfData);
     });
 
-    // Register Arabic font
-    doc.registerFont("Arabic", arabicFont);
+    // Register Arabic font if available
+    if (arabicFont) {
+      doc.registerFont("Arabic", arabicFont);
+    }
 
     addQRCode(doc, qrCodeUrl);
     addHeader(doc);
@@ -66,7 +74,10 @@ const addPartyInfo = (doc, invoiceData) => {
 
   doc.font("Helvetica-Bold").fontSize(12);
   doc.text("Buyer Information", { underline: true });
-  doc.font("Arabic").fontSize(10);
+  
+  // Use Arabic font only if available, otherwise use Helvetica
+  const customerFont = arabicFont ? "Arabic" : "Helvetica";
+  doc.font(customerFont).fontSize(10);
   doc.text(
     `Name: ${invoiceData.AccountingCustomerParty.PartyLegalEntity.RegistrationName}`
   );
@@ -125,13 +136,20 @@ const addItemsTable = (doc, invoiceData) => {
     const totalAmount =
       parseFloat(item.LineExtensionAmount) +
       parseFloat(item.TaxTotal.TaxAmount);
+    
+    // Fixed the issue here - handle different data structures
+    const quantity = item.InvoicedQuantity?.quantity || item.InvoicedQuantity || "1";
+    const itemId = item.ID || "1";
+    const itemName = item.Item?.Name || "Item";
+    const priceAmount = item.Price?.PriceAmount || item.LineExtensionAmount;
+    
     table.rows.push([
-      item.ID,
-      item.Item.Name,
-      item.InvoicedQuantity.quantity,
-      item.Price.PriceAmount,
-      item.LineExtensionAmount,
-      item.TaxTotal.TaxAmount,
+      itemId,
+      itemName,
+      quantity,
+      priceAmount,
+      item.LineExtensionAmount || "0.00",
+      item.TaxTotal?.TaxAmount || "0.00",
       totalAmount.toFixed(2),
     ]);
   });
@@ -163,8 +181,10 @@ const addItemsTable = (doc, invoiceData) => {
   table.rows.forEach((row, rowIndex) => {
     const y = startY + cellHeight + rowIndex * cellHeight;
     row.forEach((cell, cellIndex) => {
+      // Ensure cell is not undefined before calling toString()
+      const cellValue = cell !== undefined && cell !== null ? cell.toString() : "";
       doc.text(
-        cell.toString(),
+        cellValue,
         startX + cellIndex * cellWidth + cellPadding,
         y + cellPadding,
         {
